@@ -131,20 +131,23 @@ const gatherCss = ( target = null ) => {
                 } else {
                     dirPath = ( pathArray[i] )
                         ? `${dirPath}/${pathArray[i].replace( /\.html?$/, '' )}`
-                        : `${dirPath}/stylesheet`;
-
-                    dirPath = ( urlObject.query )
-                        ? `${dirPath}-${urlObject.query}.css`
-                        : `${dirPath}.css`;
+                        : `${dirPath}/`;
 
                     links.map( async l => {
                         const response = await fetch( l.href );
 
                         if ( response.status === 200 ) {
+                            const fileUri = extractFileUri( l.href );
+                            if ( !fileUri ) return;
+
                             const data = await response.text();
 
+                            const fqFilePath = ( urlObject.query )
+                                ? `${dirPath}-${urlObject.query}.css`
+                                : `${dirPath}${fileUri}.css`;
+
                             fs.writeFileSync(
-                                dirPath,
+                                fqFilePath,
                                 data
                             );
                         }
@@ -167,7 +170,7 @@ const gatherCss = ( target = null ) => {
         'end',
         () => {
             process.stdout.write( '\n' );
-            console.log( `All pages a crawled!` );
+            console.log( `All pages crawled!` );
         }
     );
 
@@ -242,6 +245,12 @@ const gatherRedirects = ( target = null ) => {
         console.log( `\r\nFinish! All ${linkinPark.foundLinks.size} links on pages on domain ${target} a checked!` );
     } );
 
+};
+
+const extractFileUri = ( URL ) => {
+    if ( !URL ) throw new Error( 'URL string must be provided!' );
+    const reg = /[\w\:\/\.-]+\/([\w\.-]+?)\.css/gm;
+    return reg.exec( URL )?.[1];
 };
 
 //gatherHtml( target );
