@@ -2,6 +2,7 @@
 node_modules/
 vendor/
 compiled/
+temp_*/
 
 # ignore all files starting with . or ~
 .*
