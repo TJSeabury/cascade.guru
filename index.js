@@ -6,6 +6,7 @@ import {
     VirtualConsole
 } from 'jsdom';
 import fetch from 'node-fetch';
+import { exit } from 'process';
 
 const target = 'kctrialattorney.com';
 
@@ -176,6 +177,17 @@ const gatherCss = ( target = null ) => {
 
 };
 
+const getHtml = async ( target = null ) => {
+    if ( target === null ) throw new Error( 'Target must be provided...' );
+    console.log( target );
+    const response = await fetch( target );
+    if ( response.status === 200 ) {
+        const html = await response.text();
+        return html;
+    }
+    return null;
+};
+
 const gatherRedirects = ( target = null ) => {
     if ( target === null ) throw new Error( 'Target must be provided...' );
 
@@ -254,4 +266,37 @@ const extractFileUri = ( URL ) => {
 };
 
 //gatherHtml( target );
-gatherCss( target );
+//gatherCss( target );
+
+const testHtml = await getHtml( `https://${target}/` );
+fs.writeFileSync(
+    'temp_test.html',
+    testHtml
+);
+
+const virtualConsole = new VirtualConsole();
+virtualConsole.on( "error", () => {
+    // No-op to skip console errors.
+} );
+// Get them stylesheet links.
+const dom = new JSDOM( html, { virtualConsole } );
+if ( !dom ) exit( 1 );
+
+const links = Array.from( dom.window.document.querySelectorAll( 'link[rel="stylesheet"]' ) );
+if ( !links ) exit( 1 );
+
+links.map( async l => {
+    const response = await fetch( l.href );
+
+    if ( response.status === 200 ) {
+        const fileUri = extractFileUri( l.href );
+        if ( !fileUri ) return;
+
+        const data = await response.text();
+
+        fs.writeFileSync(
+            `temp_${fqFilePath}.css`,
+            data
+        );
+    }
+} );
