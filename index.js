@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import Crawler from 'node-html-linkinPark';
+import Crawler from 'node-html-crawler';
 
 const target = 'kctrialattorney.com';
 
