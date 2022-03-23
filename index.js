@@ -1,7 +1,11 @@
 import fs from 'fs';
 import path from 'path';
 import Crawler from 'node-html-crawler';
-import { JSDOM } from 'jsdom';
+import {
+    JSDOM,
+    VirtualConsole
+} from 'jsdom';
+import fetch from 'node-fetch';
 
 const target = 'kctrialattorney.com';
 
@@ -106,10 +110,16 @@ const gatherCss = ( target = null ) => {
             const pathArray = urlObject.pathname.split( '/' );
             let dirPath = `${baseDirPath}_css`;
 
+            // See: https://github.com/jsdom/jsdom/issues/2230
+            const virtualConsole = new VirtualConsole();
+            virtualConsole.on( "error", () => {
+                // No-op to skip console errors.
+            } );
             // Get them stylesheet links.
-            const dom = new JSDOM( html );
-            const links = dom.querySelectorAll( 'link[rel="stylesheet"]' );
+            const dom = new JSDOM( html, { virtualConsole } );
+            if ( !dom ) return true;
 
+            const links = Array.from( dom.window.document.querySelectorAll( 'link[rel="stylesheet"]' ) );
             if ( !links ) return true;
 
             if ( !fs.existsSync( dirPath ) ) fs.mkdirSync( dirPath );
@@ -121,18 +131,28 @@ const gatherCss = ( target = null ) => {
                 } else {
                     dirPath = ( pathArray[i] )
                         ? `${dirPath}/${pathArray[i].replace( /\.html?$/, '' )}`
-                        : `${dirPath}/stylesheets`;
+                        : `${dirPath}/stylesheet`;
 
                     dirPath = ( urlObject.query )
-                        ? `${dirPath}-${urlObject.query}.json`
-                        : `${dirPath}.json`;
+                        ? `${dirPath}-${urlObject.query}.css`
+                        : `${dirPath}.css`;
 
-                    fs.writeFileSync( dirPath, JSON.stringify( links ) );
+                    links.map( async l => {
+                        const response = await fetch( l.href );
+
+                        if ( response.status === 200 ) {
+                            const data = await response.text();
+
+                            fs.writeFileSync(
+                                dirPath,
+                                data
+                            );
+                        }
+                    } );
 
                     process.stdout.write( `\r${linkinPark.countOfProcessedUrls} out of ${linkinPark.foundLinks.size}` );
                 }
             }
-            process.stdout.write( '\n' );
 
             return true;
         }
@@ -145,7 +165,10 @@ const gatherCss = ( target = null ) => {
 
     linkinPark.on(
         'end',
-        () => console.log( `All pages a crawled!` )
+        () => {
+            process.stdout.write( '\n' );
+            console.log( `All pages a crawled!` );
+        }
     );
 
 };
