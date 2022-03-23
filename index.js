@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import Crawler from 'node-html-crawler';
+import { JSDOM } from 'jsdom';
 
 const target = 'kctrialattorney.com';
 
@@ -35,6 +36,7 @@ const gatherHtml = ( target = null ) => {
             const pathArray = urlObject.pathname.split( '/' );
             let dirPath = baseDirPath;
 
+
             if ( !fs.existsSync( dirPath ) ) fs.mkdirSync( dirPath );
 
             for ( let i = 1; i < pathArray.length; i += 1 ) {
@@ -47,14 +49,15 @@ const gatherHtml = ( target = null ) => {
                         : `${dirPath}/index`;
 
                     dirPath = ( urlObject.query )
-                        ? `${dirPath}-${urlObject.query}.html`
-                        : `${dirPath}.html`;
+                        ? `${dirPath}-${urlObject.query}.json`
+                        : `${dirPath}.json`;
 
-                    fs.writeFileSync( dirPath, html );
+                    fs.writeFileSync( dirPath, JSON.stringify( data ) );
 
                     process.stdout.write( `\r${linkinPark.countOfProcessedUrls} out of ${linkinPark.foundLinks.size}` );
                 }
             }
+            process.stdout.write( '\n' );
 
             return true;
         }
@@ -73,6 +76,77 @@ const gatherHtml = ( target = null ) => {
 };
 
 const gatherCss = ( target = null ) => {
+    if ( target === null ) throw new Error( 'Target must be provided...' );
+
+    const baseDirPath = path.resolve( path.dirname( './' ), `temp_${target}` );
+
+    const linkinPark = new Crawler( {
+        protocol: 'https:', // default 'http:'
+        domain: target, // default 'example.com'
+        limitForConnections: 15, // number of simultaneous connections, default 10
+        limitForRedirects: 5, // possible number of redirects, default 5
+        timeout: 500, // number of milliseconds between pending connection, default 300
+        headers: {
+            'User-Agent': 'Mozilla/5.0', // default header
+        },
+        urlFilter: ( url ) => true, // default filter
+    } ); // These wounds, they will not heal.
+
+    linkinPark.crawl(); // Crawling in my crawl.
+    // See: https://www.youtube.com/watch?v=hfYDQIfoE1w
+
+    linkinPark.on(
+        'data',
+        ( data ) => {
+            if ( !data.url || !data.result.body ) return false;
+
+            const urlString = data.url;
+            const html = data.result.body;
+            const urlObject = new URL( urlString );
+            const pathArray = urlObject.pathname.split( '/' );
+            let dirPath = `${baseDirPath}_css`;
+
+            // Get them stylesheet links.
+            const dom = new JSDOM( html );
+            const links = dom.querySelectorAll( 'link[rel="stylesheet"]' );
+
+            if ( !links ) return true;
+
+            if ( !fs.existsSync( dirPath ) ) fs.mkdirSync( dirPath );
+
+            for ( let i = 1; i < pathArray.length; i += 1 ) {
+                if ( i !== pathArray.length - 1 ) {
+                    dirPath = `${dirPath}/${pathArray[i]}`;
+                    if ( !fs.existsSync( dirPath ) ) fs.mkdirSync( dirPath );
+                } else {
+                    dirPath = ( pathArray[i] )
+                        ? `${dirPath}/${pathArray[i].replace( /\.html?$/, '' )}`
+                        : `${dirPath}/stylesheets`;
+
+                    dirPath = ( urlObject.query )
+                        ? `${dirPath}-${urlObject.query}.json`
+                        : `${dirPath}.json`;
+
+                    fs.writeFileSync( dirPath, JSON.stringify( links ) );
+
+                    process.stdout.write( `\r${linkinPark.countOfProcessedUrls} out of ${linkinPark.foundLinks.size}` );
+                }
+            }
+            process.stdout.write( '\n' );
+
+            return true;
+        }
+    );
+
+    linkinPark.on(
+        'error',
+        ( error ) => console.error( error )
+    );
+
+    linkinPark.on(
+        'end',
+        () => console.log( `All pages a crawled!` )
+    );
 
 };
 
@@ -147,4 +221,5 @@ const gatherRedirects = ( target = null ) => {
 
 };
 
-gatherHtml( target );
+//gatherHtml( target );
+gatherCss( target );

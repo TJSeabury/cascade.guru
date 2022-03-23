@@ -17,6 +17,7 @@
     "author": "Tyler Seabury",
     "license": "GPL-2.0",
     "dependencies": {
+        "jsdom": "^19.0.0",
         "node-html-crawler": "^1.2.3",
         "purgecss": "^4.1.3"
     }
