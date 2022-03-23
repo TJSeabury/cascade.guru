@@ -1,0 +1,23 @@
+{
+    "name": "@tjseabury/purgecss.ninja",
+    "version": "0.1.0",
+    "description": "A webservice that crawls a live site, gathers the css and html, and returns a bundle with unused css purged.",
+    "main": "index.js",
+    "type": "module",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "keywords": [
+        "css",
+        "html",
+        "purge",
+        "crawler",
+        "purgecss"
+    ],
+    "author": "Tyler Seabury",
+    "license": "GPL-2.0",
+    "dependencies": {
+        "node-html-crawler": "^1.2.3",
+        "purgecss": "^4.1.3"
+    }
+}
