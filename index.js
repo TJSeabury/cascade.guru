@@ -7,6 +7,8 @@ import {
 } from 'jsdom';
 import fetch from 'node-fetch';
 import { exit } from 'process';
+import { PurgeCSS } from "purgecss";
+import purgecssWordpress from 'purgecss-with-wordpress';
 
 const target = 'kctrialattorney.com';
 
@@ -269,8 +271,9 @@ const extractFileUri = ( URL ) => {
 //gatherCss( target );
 
 const testHtml = await getHtml( `https://${target}/` );
+if ( !fs.existsSync( './temp_test/' ) ) fs.mkdirSync( './temp_test/' );
 fs.writeFileSync(
-    'temp_test.html',
+    path.resolve( './temp_test/temp_test.html' ),
     testHtml
 );
 
@@ -279,7 +282,7 @@ virtualConsole.on( "error", () => {
     // No-op to skip console errors.
 } );
 // Get them stylesheet links.
-const dom = new JSDOM( html, { virtualConsole } );
+const dom = new JSDOM( testHtml, { virtualConsole } );
 if ( !dom ) exit( 1 );
 
 const links = Array.from( dom.window.document.querySelectorAll( 'link[rel="stylesheet"]' ) );
@@ -295,8 +298,20 @@ links.map( async l => {
         const data = await response.text();
 
         fs.writeFileSync(
-            `temp_${fqFilePath}.css`,
+            path.resolve( `./temp_test/temp_${fileUri}.css` ),
             data
         );
     }
 } );
+
+const purgeCss = new PurgeCSS( {
+    content: ['./temp_test/**/*.html'],
+    css: ['./temp_test/**/*.css'],
+    safelist: purgecssWordpress.safelist
+} );
+const result = await purgeCss.purge();
+fs.writeFileSync(
+    path.resolve( `./temp_test/temp_purgebundle.css` ),
+    result
+);
+
