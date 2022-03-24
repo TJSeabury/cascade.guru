@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import fs from 'fs';
 import path from 'path';
 import Crawler from 'node-html-crawler';
@@ -181,7 +183,6 @@ const gatherCss = ( target = null ) => {
 
 const getHtml = async ( target = null ) => {
     if ( target === null ) throw new Error( 'Target must be provided...' );
-    console.log( target );
     const response = await fetch( target );
     if ( response.status === 200 ) {
         const html = await response.text();
