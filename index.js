@@ -9,6 +9,7 @@ import fetch from 'node-fetch';
 import { exit } from 'process';
 import { PurgeCSS } from "purgecss";
 import purgecssWordpress from 'purgecss-with-wordpress';
+import { executionAsyncId } from 'async_hooks';
 
 const target = 'kctrialattorney.com';
 
@@ -304,14 +305,16 @@ links.map( async l => {
     }
 } );
 
-const purgeCss = new PurgeCSS( {
+const result = await new PurgeCSS().purge( {
     content: ['./temp_test/**/*.html'],
     css: ['./temp_test/**/*.css'],
     safelist: purgecssWordpress.safelist
 } );
-const result = await purgeCss.purge();
-fs.writeFileSync(
-    path.resolve( `./temp_test/temp_purgebundle.css` ),
-    result
-);
+if ( !result ) exit( 1 );
+for ( const stylesheet of result ) {
+    fs.writeFileSync(
+        path.resolve( `./temp_test/${extractFileUri( stylesheet.file )}.purged.css` ),
+        stylesheet.css
+    );
+}
 
