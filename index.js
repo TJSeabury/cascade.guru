@@ -9,7 +9,6 @@ import fetch from 'node-fetch';
 import { exit } from 'process';
 import { PurgeCSS } from "purgecss";
 import purgecssWordpress from 'purgecss-with-wordpress';
-import { executionAsyncId } from 'async_hooks';
 
 const target = 'kctrialattorney.com';
 
