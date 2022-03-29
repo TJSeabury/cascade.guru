@@ -289,6 +289,7 @@ const getAllLinks = ( target = null ) => {
         }
     );
 
+    return links;
 };
 
 const getHtml = async ( target = null ) => {
