@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 import fs from 'fs';
 import path from 'path';
 import Crawler from 'node-html-crawler';
@@ -12,7 +10,16 @@ import { exit } from 'process';
 import { PurgeCSS } from "purgecss";
 import purgecssWordpress from 'purgecss-with-wordpress';
 
-const target = 'kctrialattorney.com';
+const target = 'donutdip.com';
+
+const isUrl = u => {
+    try {
+        new URL( u );
+        return true;
+    } catch ( error ) {
+        return false;
+    }
+};
 
 const gatherHtml = ( target = null ) => {
     if ( target === null ) throw new Error( 'Target must be provided...' );
@@ -26,7 +33,7 @@ const gatherHtml = ( target = null ) => {
         limitForRedirects: 5, // possible number of redirects, default 5
         timeout: 500, // number of milliseconds between pending connection, default 300
         headers: {
-            'User-Agent': 'Mozilla/5.0', // default header
+            'User-Agent': 'Mozilla/5.0 Long cat is long', // default header
         },
         urlFilter: ( url ) => true, // default filter
     } ); // These wounds, they will not heal.
@@ -92,7 +99,7 @@ const gatherCss = ( target = null ) => {
     const linkinPark = new Crawler( {
         protocol: 'https:', // default 'http:'
         domain: target, // default 'example.com'
-        limitForConnections: 15, // number of simultaneous connections, default 10
+        limitForConnections: 25, // number of simultaneous connections, default 10
         limitForRedirects: 5, // possible number of redirects, default 5
         timeout: 500, // number of milliseconds between pending connection, default 300
         headers: {
@@ -139,6 +146,7 @@ const gatherCss = ( target = null ) => {
                         : `${dirPath}/`;
 
                     links.map( async l => {
+                        if ( !isUrl( l.href ) ) return;
                         const response = await fetch( l.href );
 
                         if ( response.status === 200 ) {
@@ -161,6 +169,108 @@ const gatherCss = ( target = null ) => {
                     process.stdout.write( `\r${linkinPark.countOfProcessedUrls} out of ${linkinPark.foundLinks.size}` );
                 }
             }
+
+            return true;
+        }
+    );
+
+    linkinPark.on(
+        'error',
+        ( error ) => console.error( error )
+    );
+
+    linkinPark.on(
+        'end',
+        () => {
+            process.stdout.write( '\n' );
+            console.log( `All pages crawled!` );
+        }
+    );
+
+};
+
+const getAllLinks = ( target = null ) => {
+    if ( target === null ) throw new Error( 'Target must be provided...' );
+
+    const baseDirPath = path.resolve( path.dirname( './' ), `temp_${target}` );
+
+    const linkinPark = new Crawler( {
+        protocol: 'https:', // default 'http:'
+        domain: target, // default 'example.com'
+        limitForConnections: 25, // number of simultaneous connections, default 10
+        limitForRedirects: 5, // possible number of redirects, default 5
+        timeout: 500, // number of milliseconds between pending connection, default 300
+        headers: {
+            'User-Agent': 'Mozilla/5.0', // default header
+        },
+        urlFilter: ( url ) => true, // default filter
+    } ); // These wounds, they will not heal.
+
+    linkinPark.crawl(); // Crawling in my crawl.
+    // See: https://www.youtube.com/watch?v=hfYDQIfoE1w
+
+    const links = [];
+
+    linkinPark.on(
+        'data',
+        ( data ) => {
+            if ( !data.url || !data.result.body ) return false;
+
+            links = [...links, data.url];
+
+            /* const urlString = data.url;
+            const html = data.result.body;
+            const urlObject = new URL( urlString );
+            const pathArray = urlObject.pathname.split( '/' );
+            let dirPath = `${baseDirPath}_css`;
+
+            // See: https://github.com/jsdom/jsdom/issues/2230
+            const virtualConsole = new VirtualConsole();
+            virtualConsole.on( "error", () => {
+                // No-op to skip console errors.
+            } );
+            // Get them stylesheet links.
+            const dom = new JSDOM( html, { virtualConsole } );
+            if ( !dom ) return true;
+
+            const links = Array.from( dom.window.document.querySelectorAll( 'link[rel="stylesheet"]' ) );
+            if ( !links ) return true;
+
+            if ( !fs.existsSync( dirPath ) ) fs.mkdirSync( dirPath );
+
+            for ( let i = 1; i < pathArray.length; i += 1 ) {
+                if ( i !== pathArray.length - 1 ) {
+                    dirPath = `${dirPath}/${pathArray[i]}`;
+                    if ( !fs.existsSync( dirPath ) ) fs.mkdirSync( dirPath );
+                } else {
+                    dirPath = ( pathArray[i] )
+                        ? `${dirPath}/${pathArray[i].replace( /\.html?$/, '' )}`
+                        : `${dirPath}/`;
+
+                    links.map( async l => {
+                        if ( !isUrl( l.href ) ) return;
+                        const response = await fetch( l.href );
+
+                        if ( response.status === 200 ) {
+                            const fileUri = extractFileUri( l.href );
+                            if ( !fileUri ) return;
+
+                            const data = await response.text();
+
+                            const fqFilePath = ( urlObject.query )
+                                ? `${dirPath}-${urlObject.query}.css`
+                                : `${dirPath}${fileUri}.css`;
+
+                            fs.writeFileSync(
+                                fqFilePath,
+                                data
+                            );
+                        }
+                    } );
+
+                    process.stdout.write( `\r${linkinPark.countOfProcessedUrls} out of ${linkinPark.foundLinks.size}` );
+                }
+            } */
 
             return true;
         }
@@ -268,10 +378,21 @@ const extractFileUri = ( URL ) => {
     return reg.exec( URL )?.[1];
 };
 
+const links = getAllLinks( 'utcainc.com' );
+if ( !links ) exit( 1 );
+fs.writeFileSync(
+    'utcainc.com.csv',
+    links.reduce( ( csv, link ) => {
+        return csv + `${link},\n`;
+    }, 'Links,\n' )
+);
+exit();
+
+
 //gatherHtml( target );
 //gatherCss( target );
 
-const testHtml = await getHtml( `https://${target}/` );
+/* const testHtml = await getHtml( `https://${target}/` );
 if ( !fs.existsSync( './temp_test/' ) ) fs.mkdirSync( './temp_test/' );
 fs.writeFileSync(
     path.resolve( './temp_test/temp_test.html' ),
@@ -289,7 +410,8 @@ if ( !dom ) exit( 1 );
 const links = Array.from( dom.window.document.querySelectorAll( 'link[rel="stylesheet"]' ) );
 if ( !links ) exit( 1 );
 
-links.map( async l => {
+await links.map( async l => {
+    if ( !isUrl( l.href ) ) return;
     const response = await fetch( l.href );
 
     if ( response.status === 200 ) {
@@ -304,17 +426,17 @@ links.map( async l => {
         );
     }
 } );
-
-const result = await new PurgeCSS().purge( {
-    content: ['./temp_test/**/*.html'],
-    css: ['./temp_test/**/*.css'],
-    safelist: purgecssWordpress.safelist
-} );
-if ( !result ) exit( 1 );
+*/
+//const result = await new PurgeCSS().purge( {
+//    content: ['./temp_test/**/*.html'],
+//    css: ['./temp_test/**/*.css'],
+//    safelist: purgecssWordpress.safelist
+//} );
+/* if ( !result ) exit( 1 );
 for ( const stylesheet of result ) {
     fs.writeFileSync(
         path.resolve( `./temp_test/${extractFileUri( stylesheet.file )}.purged.css` ),
         stylesheet.css
     );
-}
+} */
 
