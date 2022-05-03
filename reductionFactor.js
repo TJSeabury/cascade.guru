@@ -5,13 +5,13 @@ import {
 } from './linkinPark.js';
 
 export default function reductionFactor () {
-    const files = glob.sync( './temp_test/*.min.css' );
+    const files = glob.sync( './temp_test/*.css' );
 
     const sizes = files.map( f => {
         const uri = extractFileUri( f );
         return [
             fs.statSync( f ).size,
-            fs.statSync( `./temp_test/${uri}.purged.css` ).size
+            fs.statSync( `./temp_test/purged/${uri}.purged.css` ).size
         ];
     } );
 

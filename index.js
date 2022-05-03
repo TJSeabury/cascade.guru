@@ -132,10 +132,11 @@ app.post( '/', async ( req, res ) => {
     }
 
     let css = '';
+    if ( !fs.existsSync( './temp_test/purged/' ) ) fs.mkdirSync( './temp_test/purged/' );
     for ( const stylesheet of result ) {
         css += stylesheet.css;
         fs.writeFileSync(
-            path.resolve( `./temp_test/${extractFileUri( stylesheet.file )}.purged.css` ),
+            path.resolve( `./temp_test/purged/${extractFileUri( stylesheet.file )}.purged.css` ),
             stylesheet.css
         );
     }
