@@ -10,6 +10,8 @@ export const extractFileUri = ( URL ) => {
     return reg.exec( URL )?.[1];
 };
 
+export const round = ( num, n ) => Math.round( ( num + Number.EPSILON ) * ( 10 ** n ) ) / ( 10 ** n );
+
 export const getHead = async ( target = null ) => {
     if ( target === null ) throw new Error( 'Target must be provided...' );
     const response = await fetch(

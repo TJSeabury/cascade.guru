@@ -12,6 +12,8 @@ import {
     authenticate
 } from './authorization.js';
 import {
+    isUrl,
+    isNotUrl,
     getHead,
     getHtml,
     parseDom,
@@ -19,6 +21,14 @@ import {
 } from './linkinPark.js';
 import { PurgeCSS } from "purgecss";
 import purgecssWordpress from 'purgecss-with-wordpress';
+
+import {
+    JSDOM,
+    VirtualConsole
+} from 'jsdom';
+import fetch from 'node-fetch';
+
+import reductionFactor from './reductionFactor.js';
 
 // construct the require method
 const require = createRequire( import.meta.url );
@@ -95,7 +105,7 @@ app.post( '/', async ( req, res ) => {
         res.status( 500 ).send( 'No <link>s found. :c' );
     }
 
-    await links.map( async l => {
+    for ( const l of links ) {
         if ( !isUrl( l.href ) ) return;
         const response = await fetch( l.href );
 
@@ -110,7 +120,7 @@ app.post( '/', async ( req, res ) => {
                 data
             );
         }
-    } );
+    }
 
     const result = await new PurgeCSS().purge( {
         content: ['./temp_test/**/*.html'],
@@ -121,14 +131,29 @@ app.post( '/', async ( req, res ) => {
         res.status( 500 ).send( 'Failed to purge. :c' );
     }
 
+    let css = '';
     for ( const stylesheet of result ) {
+        css += stylesheet.css;
         fs.writeFileSync(
             path.resolve( `./temp_test/${extractFileUri( stylesheet.file )}.purged.css` ),
             stylesheet.css
         );
     }
 
+    const rf = reductionFactor();
+    console.log( rf );
+
+    // cleanup!
+    fs.rmSync(
+        './temp_test/',
+        {
+            recursive: true,
+            force: true
+        }
+    );
+
     res.json( {
-        css: ''
+        reductionFactor: 0,
+        css: css
     } );
 } );
