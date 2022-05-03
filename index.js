@@ -1,443 +1,134 @@
 import fs from 'fs';
 import path from 'path';
-import Crawler from 'node-html-crawler';
+// Bring in the ability to create the 'require' method
+import { createRequire } from "module";
+import { fileURLToPath } from 'url';
+
+import express from 'express';
+import connectLivereload from 'connect-livereload';
+
 import {
-    JSDOM,
-    VirtualConsole
-} from 'jsdom';
-import fetch from 'node-fetch';
-import { exit } from 'process';
+    credentialsFromBasicAuth,
+    authenticate
+} from './authorization.js';
+import {
+    getHead,
+    getHtml,
+    parseDom,
+    extractFileUri
+} from './linkinPark.js';
 import { PurgeCSS } from "purgecss";
 import purgecssWordpress from 'purgecss-with-wordpress';
 
-const target = 'donutdip.com';
+// construct the require method
+const require = createRequire( import.meta.url );
 
-const isUrl = u => {
-    try {
-        new URL( u );
-        return true;
-    } catch ( error ) {
-        return false;
+// Solves: "__dirname is not defined in ES module scope"
+const __filename = fileURLToPath( import.meta.url );
+const __dirname = path.dirname( __filename );
+
+const bodyParser = require( 'body-parser' );
+const livereload = require( 'livereload' );
+
+const app = express();
+const port = 6969;
+
+// open livereload high port and start to watch public directory for changes
+const liveReloadServer = livereload.createServer();
+liveReloadServer.watch( path.resolve( __dirname, 'public' ) );
+
+// ping browser on Express boot, once browser has reconnected and handshaken
+liveReloadServer.server.once( "connection", () => {
+    setTimeout( () => {
+        liveReloadServer.refresh( "/" );
+    }, 100 );
+} );
+
+// monkey patch every served HTML so they know of changes
+app.use( connectLivereload() );
+
+app.use( bodyParser.urlencoded( { extended: true } ) );
+app.use( bodyParser.json() );
+
+app.listen( port );
+
+app.get( '/', ( req, res ) => {
+    res.send( 'Well, yes, but actually no.' );
+} );
+
+app.post( '/', async ( req, res ) => {
+    const [
+        username,
+        password
+    ] = credentialsFromBasicAuth( req );
+
+    const ok = authenticate( username, password );
+
+    if ( !ok ) {
+        res.status( 401 ).send( 'Authentication failed.' );
     }
-};
 
-const gatherHtml = ( target = null ) => {
-    if ( target === null ) throw new Error( 'Target must be provided...' );
-
-    const baseDirPath = path.resolve( path.dirname( './' ), `temp_${target}` );
-
-    const linkinPark = new Crawler( {
-        protocol: 'https:', // default 'http:'
-        domain: target, // default 'example.com'
-        limitForConnections: 15, // number of simultaneous connections, default 10
-        limitForRedirects: 5, // possible number of redirects, default 5
-        timeout: 500, // number of milliseconds between pending connection, default 300
-        headers: {
-            'User-Agent': 'Mozilla/5.0 Long cat is long', // default header
-        },
-        urlFilter: ( url ) => true, // default filter
-    } ); // These wounds, they will not heal.
-
-    linkinPark.crawl(); // Crawling in my crawl.
-    // See: https://www.youtube.com/watch?v=hfYDQIfoE1w
-
-    linkinPark.on(
-        'data',
-        ( data ) => {
-            if ( !data.url || !data.result.body ) return false;
-
-            const urlString = data.url;
-            const html = data.result.body;
-            const urlObject = new URL( urlString );
-            const pathArray = urlObject.pathname.split( '/' );
-            let dirPath = baseDirPath;
-
-
-            if ( !fs.existsSync( dirPath ) ) fs.mkdirSync( dirPath );
-
-            for ( let i = 1; i < pathArray.length; i += 1 ) {
-                if ( i !== pathArray.length - 1 ) {
-                    dirPath = `${dirPath}/${pathArray[i]}`;
-                    if ( !fs.existsSync( dirPath ) ) fs.mkdirSync( dirPath );
-                } else {
-                    dirPath = ( pathArray[i] )
-                        ? `${dirPath}/${pathArray[i].replace( /\.html?$/, '' )}`
-                        : `${dirPath}/index`;
-
-                    dirPath = ( urlObject.query )
-                        ? `${dirPath}-${urlObject.query}.json`
-                        : `${dirPath}.json`;
-
-                    fs.writeFileSync( dirPath, JSON.stringify( data ) );
-
-                    process.stdout.write( `\r${linkinPark.countOfProcessedUrls} out of ${linkinPark.foundLinks.size}` );
-                }
-            }
-            process.stdout.write( '\n' );
-
-            return true;
-        }
-    );
-
-    linkinPark.on(
-        'error',
-        ( error ) => console.error( error )
-    );
-
-    linkinPark.on(
-        'end',
-        () => console.log( `All pages a saved in folder ${baseDirPath}!` )
-    );
-
-};
-
-const gatherCss = ( target = null ) => {
-    if ( target === null ) throw new Error( 'Target must be provided...' );
-
-    const baseDirPath = path.resolve( path.dirname( './' ), `temp_${target}` );
-
-    const linkinPark = new Crawler( {
-        protocol: 'https:', // default 'http:'
-        domain: target, // default 'example.com'
-        limitForConnections: 25, // number of simultaneous connections, default 10
-        limitForRedirects: 5, // possible number of redirects, default 5
-        timeout: 500, // number of milliseconds between pending connection, default 300
-        headers: {
-            'User-Agent': 'Mozilla/5.0', // default header
-        },
-        urlFilter: ( url ) => true, // default filter
-    } ); // These wounds, they will not heal.
-
-    linkinPark.crawl(); // Crawling in my crawl.
-    // See: https://www.youtube.com/watch?v=hfYDQIfoE1w
-
-    linkinPark.on(
-        'data',
-        ( data ) => {
-            if ( !data.url || !data.result.body ) return false;
-
-            const urlString = data.url;
-            const html = data.result.body;
-            const urlObject = new URL( urlString );
-            const pathArray = urlObject.pathname.split( '/' );
-            let dirPath = `${baseDirPath}_css`;
-
-            // See: https://github.com/jsdom/jsdom/issues/2230
-            const virtualConsole = new VirtualConsole();
-            virtualConsole.on( "error", () => {
-                // No-op to skip console errors.
-            } );
-            // Get them stylesheet links.
-            const dom = new JSDOM( html, { virtualConsole } );
-            if ( !dom ) return true;
-
-            const links = Array.from( dom.window.document.querySelectorAll( 'link[rel="stylesheet"]' ) );
-            if ( !links ) return true;
-
-            if ( !fs.existsSync( dirPath ) ) fs.mkdirSync( dirPath );
-
-            for ( let i = 1; i < pathArray.length; i += 1 ) {
-                if ( i !== pathArray.length - 1 ) {
-                    dirPath = `${dirPath}/${pathArray[i]}`;
-                    if ( !fs.existsSync( dirPath ) ) fs.mkdirSync( dirPath );
-                } else {
-                    dirPath = ( pathArray[i] )
-                        ? `${dirPath}/${pathArray[i].replace( /\.html?$/, '' )}`
-                        : `${dirPath}/`;
-
-                    links.map( async l => {
-                        if ( !isUrl( l.href ) ) return;
-                        const response = await fetch( l.href );
-
-                        if ( response.status === 200 ) {
-                            const fileUri = extractFileUri( l.href );
-                            if ( !fileUri ) return;
-
-                            const data = await response.text();
-
-                            const fqFilePath = ( urlObject.query )
-                                ? `${dirPath}-${urlObject.query}.css`
-                                : `${dirPath}${fileUri}.css`;
-
-                            fs.writeFileSync(
-                                fqFilePath,
-                                data
-                            );
-                        }
-                    } );
-
-                    process.stdout.write( `\r${linkinPark.countOfProcessedUrls} out of ${linkinPark.foundLinks.size}` );
-                }
-            }
-
-            return true;
-        }
-    );
-
-    linkinPark.on(
-        'error',
-        ( error ) => console.error( error )
-    );
-
-    linkinPark.on(
-        'end',
-        () => {
-            process.stdout.write( '\n' );
-            console.log( `All pages crawled!` );
-        }
-    );
-
-};
-
-const getAllLinks = ( target = null ) => {
-    if ( target === null ) throw new Error( 'Target must be provided...' );
-
-    const baseDirPath = path.resolve( path.dirname( './' ), `temp_${target}` );
-
-    const linkinPark = new Crawler( {
-        protocol: 'https:', // default 'http:'
-        domain: target, // default 'example.com'
-        limitForConnections: 25, // number of simultaneous connections, default 10
-        limitForRedirects: 5, // possible number of redirects, default 5
-        timeout: 500, // number of milliseconds between pending connection, default 300
-        headers: {
-            'User-Agent': 'Mozilla/5.0', // default header
-        },
-        urlFilter: ( url ) => true, // default filter
-    } ); // These wounds, they will not heal.
-
-    linkinPark.crawl(); // Crawling in my crawl.
-    // See: https://www.youtube.com/watch?v=hfYDQIfoE1w
-
-    const links = [];
-
-    linkinPark.on(
-        'data',
-        ( data ) => {
-            if ( !data.url || !data.result.body ) return false;
-
-            links = [...links, data.url];
-
-            /* const urlString = data.url;
-            const html = data.result.body;
-            const urlObject = new URL( urlString );
-            const pathArray = urlObject.pathname.split( '/' );
-            let dirPath = `${baseDirPath}_css`;
-
-            // See: https://github.com/jsdom/jsdom/issues/2230
-            const virtualConsole = new VirtualConsole();
-            virtualConsole.on( "error", () => {
-                // No-op to skip console errors.
-            } );
-            // Get them stylesheet links.
-            const dom = new JSDOM( html, { virtualConsole } );
-            if ( !dom ) return true;
-
-            const links = Array.from( dom.window.document.querySelectorAll( 'link[rel="stylesheet"]' ) );
-            if ( !links ) return true;
-
-            if ( !fs.existsSync( dirPath ) ) fs.mkdirSync( dirPath );
-
-            for ( let i = 1; i < pathArray.length; i += 1 ) {
-                if ( i !== pathArray.length - 1 ) {
-                    dirPath = `${dirPath}/${pathArray[i]}`;
-                    if ( !fs.existsSync( dirPath ) ) fs.mkdirSync( dirPath );
-                } else {
-                    dirPath = ( pathArray[i] )
-                        ? `${dirPath}/${pathArray[i].replace( /\.html?$/, '' )}`
-                        : `${dirPath}/`;
-
-                    links.map( async l => {
-                        if ( !isUrl( l.href ) ) return;
-                        const response = await fetch( l.href );
-
-                        if ( response.status === 200 ) {
-                            const fileUri = extractFileUri( l.href );
-                            if ( !fileUri ) return;
-
-                            const data = await response.text();
-
-                            const fqFilePath = ( urlObject.query )
-                                ? `${dirPath}-${urlObject.query}.css`
-                                : `${dirPath}${fileUri}.css`;
-
-                            fs.writeFileSync(
-                                fqFilePath,
-                                data
-                            );
-                        }
-                    } );
-
-                    process.stdout.write( `\r${linkinPark.countOfProcessedUrls} out of ${linkinPark.foundLinks.size}` );
-                }
-            } */
-
-            return true;
-        }
-    );
-
-    linkinPark.on(
-        'error',
-        ( error ) => console.error( error )
-    );
-
-    linkinPark.on(
-        'end',
-        () => {
-            process.stdout.write( '\n' );
-            console.log( `All pages crawled!` );
-        }
-    );
-
-    return links;
-};
-
-const getHtml = async ( target = null ) => {
-    if ( target === null ) throw new Error( 'Target must be provided...' );
-    const response = await fetch( target );
-    if ( response.status === 200 ) {
-        const html = await response.text();
-        return html;
+    const target = req?.body?.target;
+    if ( !target ) {
+        res.status( 422 ).send( 'Must provide a target URL.' );
     }
-    return null;
-};
 
-const gatherRedirects = ( target = null ) => {
-    if ( target === null ) throw new Error( 'Target must be provided...' );
-
-    const siteTree = { pages: [], urls: {}, redirects: {} };
-    const getFinalStatusCodeOfRedirects = ( url ) => {
-        if ( /30\d/.test( siteTree.urls[url] ) ) return getFinalStatusCodeOfRedirects( siteTree.redirects[url] );
-
-        return siteTree.urls[url];
-    };
-
-    const linkinPark = new Crawler( {
-        protocol: 'https:', // default 'http:'
-        domain: target, // default 'example.com'
-        limitForConnections: 15, // number of simultaneous connections, default 10
-        limitForRedirects: 5, // possible number of redirects, default 5
-        timeout: 500, // number of milliseconds between pending connection, default 300
-        headers: {
-            'User-Agent': 'Mozilla/5.0', // default header
-        },
-        urlFilter: ( url ) => true, // default filter
-    } ); // These wounds, they will not heal.
-
-    linkinPark.crawl(); // Crawling in my crawl.
-    // See: https://www.youtube.com/watch?v=hfYDQIfoE1w
-
-    linkinPark.on(
-        'data',
-        ( data ) => {
-            siteTree.urls[data.url] = data.result.statusCode;
-            siteTree.pages.push( {
-                url: data.url,
-                links: data.result.links,
-            } );
-
-            process.stdout.write( `\r${linkinPark.countOfProcessedUrls} out of ${linkinPark.foundLinks.size}` );
-
-            if ( /30\d/.test( data.result.statusCode ) && data.result.links[0].url ) {
-                siteTree.redirects[data.url] = data.result.links[0].url;
-            }
-        }
+    const testHtml = await getHtml( `https://${target}/` );
+    if ( !fs.existsSync( './temp_test/' ) ) fs.mkdirSync( './temp_test/' );
+    fs.writeFileSync(
+        path.resolve( './temp_test/temp_test.html' ),
+        testHtml
     );
 
-    linkinPark.on( 'error', ( error ) => console.error( error ) );
+    const virtualConsole = new VirtualConsole();
+    virtualConsole.on( "error", () => {
+        // No-op to skip console errors.
+    } );
+    // Get them stylesheet links.
+    const dom = new JSDOM( testHtml, { virtualConsole } );
+    if ( !dom ) {
+        res.status( 500 ).send( 'Failed to create vDOM. :c' );
+    }
 
-    linkinPark.on( 'end', () => {
-        const resultFilePath = path.resolve( path.dirname( './' ), `${target}.csv` );
+    const links = Array.from( dom.window.document.querySelectorAll( 'link[rel="stylesheet"]' ) );
+    if ( !links ) {
+        res.status( 500 ).send( 'No <link>s found. :c' );
+    }
 
-        fs.writeFileSync( resultFilePath, 'url,href,status\r\n' );
+    await links.map( async l => {
+        if ( !isUrl( l.href ) ) return;
+        const response = await fetch( l.href );
 
-        siteTree.pages.forEach( ( page, pageIndex ) => {
+        if ( response.status === 200 ) {
+            const fileUri = extractFileUri( l.href );
+            if ( !fileUri ) return;
 
-            page.links.forEach( ( link, linkIndex ) => {
-                if ( link.url ) {
-                    const hrefOfLink = siteTree.pages[pageIndex].links[linkIndex].href;
-                    const statusCodeOfLink = ( /30\d/.test( siteTree.urls[link.url] ) ) ? getFinalStatusCodeOfRedirects( link.url ) : siteTree.urls[link.url];
+            const data = await response.text();
 
-                    if ( statusCodeOfLink ) {
-                        fs.appendFileSync(
-                            resultFilePath,
-                            `"${page.url}","${hrefOfLink}","${statusCodeOfLink}"\r\n`
-                        );
-                    }
-                }
-            } );
-        } );
-
-        console.log( `\r\nFinish! All ${linkinPark.foundLinks.size} links on pages on domain ${target} a checked!` );
+            fs.writeFileSync(
+                path.resolve( `./temp_test/temp_${fileUri}.css` ),
+                data
+            );
+        }
     } );
 
-};
+    const result = await new PurgeCSS().purge( {
+        content: ['./temp_test/**/*.html'],
+        css: ['./temp_test/**/*.css'],
+        safelist: purgecssWordpress.safelist
+    } );
+    if ( !result ) {
+        res.status( 500 ).send( 'Failed to purge. :c' );
+    }
 
-const extractFileUri = ( URL ) => {
-    if ( !URL ) throw new Error( 'URL string must be provided!' );
-    const reg = /[\w\:\/\.-]+\/([\w\.-]+?)\.css/gm;
-    return reg.exec( URL )?.[1];
-};
-
-const links = getAllLinks( 'utcainc.com' );
-if ( !links ) exit( 1 );
-fs.writeFileSync(
-    'utcainc.com.csv',
-    links.reduce( ( csv, link ) => {
-        return csv + `${link},\n`;
-    }, 'Links,\n' )
-);
-exit();
-
-
-//gatherHtml( target );
-//gatherCss( target );
-
-/* const testHtml = await getHtml( `https://${target}/` );
-if ( !fs.existsSync( './temp_test/' ) ) fs.mkdirSync( './temp_test/' );
-fs.writeFileSync(
-    path.resolve( './temp_test/temp_test.html' ),
-    testHtml
-);
-
-const virtualConsole = new VirtualConsole();
-virtualConsole.on( "error", () => {
-    // No-op to skip console errors.
-} );
-// Get them stylesheet links.
-const dom = new JSDOM( testHtml, { virtualConsole } );
-if ( !dom ) exit( 1 );
-
-const links = Array.from( dom.window.document.querySelectorAll( 'link[rel="stylesheet"]' ) );
-if ( !links ) exit( 1 );
-
-await links.map( async l => {
-    if ( !isUrl( l.href ) ) return;
-    const response = await fetch( l.href );
-
-    if ( response.status === 200 ) {
-        const fileUri = extractFileUri( l.href );
-        if ( !fileUri ) return;
-
-        const data = await response.text();
-
+    for ( const stylesheet of result ) {
         fs.writeFileSync(
-            path.resolve( `./temp_test/temp_${fileUri}.css` ),
-            data
+            path.resolve( `./temp_test/${extractFileUri( stylesheet.file )}.purged.css` ),
+            stylesheet.css
         );
     }
-} );
-*/
-//const result = await new PurgeCSS().purge( {
-//    content: ['./temp_test/**/*.html'],
-//    css: ['./temp_test/**/*.css'],
-//    safelist: purgecssWordpress.safelist
-//} );
-/* if ( !result ) exit( 1 );
-for ( const stylesheet of result ) {
-    fs.writeFileSync(
-        path.resolve( `./temp_test/${extractFileUri( stylesheet.file )}.purged.css` ),
-        stylesheet.css
-    );
-} */
 
+    res.json( {
+        css: ''
+    } );
+} );
