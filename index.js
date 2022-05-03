@@ -141,9 +141,6 @@ app.post( '/', async ( req, res ) => {
         );
     }
 
-    const rf = reductionFactor();
-    console.log( rf );
-
     // cleanup!
     fs.rmSync(
         './temp_test/',
@@ -154,7 +151,7 @@ app.post( '/', async ( req, res ) => {
     );
 
     res.json( {
-        reductionFactor: 0,
+        reductionFactor: reductionFactor(),
         css: css
     } );
 } );
