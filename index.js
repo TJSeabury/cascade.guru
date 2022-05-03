@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 
 import express from 'express';
 import connectLivereload from 'connect-livereload';
+import _ from 'lodash';
 
 import {
     credentialsFromBasicAuth,
@@ -83,6 +84,8 @@ app.post( '/', async ( req, res ) => {
         res.status( 422 ).send( 'Must provide a target URL.' );
     }
 
+    console.log( 'Getting HTML' );
+
     const testHtml = await getHtml( `https://${target}/` );
     if ( !fs.existsSync( './temp_test/' ) ) fs.mkdirSync( './temp_test/' );
     fs.writeFileSync(
@@ -100,21 +103,27 @@ app.post( '/', async ( req, res ) => {
         res.status( 500 ).send( 'Failed to create vDOM. :c' );
     }
 
+    console.log( 'Finding stylesheets' );
+
     const links = Array.from( dom.window.document.querySelectorAll( 'link[rel="stylesheet"]' ) );
     if ( !links ) {
         res.status( 500 ).send( 'No <link>s found. :c' );
     }
 
+    console.log( 'Downloading CSS' );
+
     for ( const l of links ) {
-        if ( !isUrl( l.href ) ) return;
+        if ( !isUrl( l.href ) ) {
+            console.error( 'Error: not a url!', l.href );
+            continue;
+        }
         const response = await fetch( l.href );
-
         if ( response.status === 200 ) {
-            const fileUri = extractFileUri( l.href );
-            if ( !fileUri ) return;
-
+            let fileUri = extractFileUri( l.href );
+            if ( !fileUri ) {
+                fileUri = _.uniqueId( Date.now() );
+            }
             const data = await response.text();
-
             fs.writeFileSync(
                 path.resolve( `./temp_test/temp_${fileUri}.css` ),
                 data
@@ -122,7 +131,9 @@ app.post( '/', async ( req, res ) => {
         }
     }
 
-    const result = await new PurgeCSS().purge( {
+    console.log( 'Purging CSS' );
+
+    const result = await ( new PurgeCSS() ).purge( {
         content: ['./temp_test/**/*.html'],
         css: ['./temp_test/**/*.css'],
         safelist: purgecssWordpress.safelist
@@ -130,6 +141,8 @@ app.post( '/', async ( req, res ) => {
     if ( !result ) {
         res.status( 500 ).send( 'Failed to purge. :c' );
     }
+
+    console.log( 'Writing purged stylesheet' );
 
     let css = '';
     if ( !fs.existsSync( './temp_test/purged/' ) ) fs.mkdirSync( './temp_test/purged/' );
@@ -141,6 +154,10 @@ app.post( '/', async ( req, res ) => {
         );
     }
 
+    console.log( 'Calculating reduction factor' );
+
+    const rf = reductionFactor();
+
     // cleanup!
     fs.rmSync(
         './temp_test/',
@@ -151,7 +168,7 @@ app.post( '/', async ( req, res ) => {
     );
 
     res.json( {
-        reductionFactor: reductionFactor(),
+        reductionFactor: rf,
         css: css
     } );
 } );
