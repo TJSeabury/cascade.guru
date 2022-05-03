@@ -25,5 +25,9 @@ export default function reductionFactor () {
 
     const reductionFactor = after / before;
 
-    return 1 - reductionFactor;
+    return {
+        before,
+        after,
+        factor: 1 - reductionFactor
+    };
 }
