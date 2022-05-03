@@ -1,5 +1,9 @@
 import fs from 'fs';
 import path from 'path';
+import 'dotenv/config';
+const {
+    mode
+} = process.env;
 // Bring in the ability to create the 'require' method
 import { createRequire } from "module";
 import { fileURLToPath } from 'url';
@@ -40,6 +44,14 @@ const __dirname = path.dirname( __filename );
 
 const bodyParser = require( 'body-parser' );
 const livereload = require( 'livereload' );
+
+if ( mode === 'production' ) {
+    // haha y'all don't work now.
+    console.log = () => { };
+    console.warn = () => { };
+    console.error = () => { };
+    console.dir = () => { };
+}
 
 const app = express();
 const port = 6969;
