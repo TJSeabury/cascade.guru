@@ -22,7 +22,9 @@ import {
     getHead,
     getHtml,
     parseDom,
-    extractFileUri
+    extractFileUri,
+    domainFromUrl,
+    linkIsRelative
 } from './linkinPark.js';
 import { PurgeCSS } from "purgecss";
 import purgecssWordpress from 'purgecss-with-wordpress';
@@ -44,6 +46,8 @@ const __dirname = path.dirname( __filename );
 
 const bodyParser = require( 'body-parser' );
 const livereload = require( 'livereload' );
+
+const CleanCSS = require( 'clean-css' );
 
 if ( mode === 'production' ) {
     // haha y'all don't work now.
@@ -98,10 +102,14 @@ app.post( '/', async ( req, res ) => {
 
     console.log( 'Getting HTML' );
 
-    const testHtml = await getHtml( `https://${target}/` );
-    if ( !fs.existsSync( './temp_test/' ) ) fs.mkdirSync( './temp_test/' );
+    const startTime = Date.now();
+
+    const tempDirName = _.uniqueId( `${Date.now()}_${domainFromUrl( target )}` );
+
+    const testHtml = await getHtml( `http://${target}/` );
+    if ( !fs.existsSync( `./${tempDirName}/` ) ) fs.mkdirSync( `./${tempDirName}/` );
     fs.writeFileSync(
-        path.resolve( './temp_test/temp_test.html' ),
+        path.resolve( `./${tempDirName}/temp.html` ),
         testHtml
     );
 
@@ -125,9 +133,14 @@ app.post( '/', async ( req, res ) => {
     console.log( 'Downloading CSS' );
 
     for ( const l of links ) {
-        if ( !isUrl( l.href ) ) {
-            console.error( 'Error: not a url!', l.href );
-            continue;
+        if ( linkIsRelative( l.href ) ) {
+            let temp = `http://${target}${l.href}`;
+            if ( isUrl( temp ) ) {
+                l.href = temp;
+            } else {
+                console.error( 'Error: not a url!', l.href, temp );
+                continue;
+            }
         }
         const response = await fetch( l.href );
         if ( response.status === 200 ) {
@@ -137,7 +150,7 @@ app.post( '/', async ( req, res ) => {
             }
             const data = await response.text();
             fs.writeFileSync(
-                path.resolve( `./temp_test/temp_${fileUri}.css` ),
+                path.resolve( `./${tempDirName}/temp_${fileUri}.css` ),
                 data
             );
         }
@@ -146,8 +159,8 @@ app.post( '/', async ( req, res ) => {
     console.log( 'Purging CSS' );
 
     const result = await ( new PurgeCSS() ).purge( {
-        content: ['./temp_test/**/*.html'],
-        css: ['./temp_test/**/*.css'],
+        content: [`./${tempDirName}/**/*.html`],
+        css: [`./${tempDirName}/**/*.css`],
         safelist: purgecssWordpress.safelist
     } );
     if ( !result ) {
@@ -157,30 +170,78 @@ app.post( '/', async ( req, res ) => {
     console.log( 'Writing purged stylesheet' );
 
     let css = '';
-    if ( !fs.existsSync( './temp_test/purged/' ) ) fs.mkdirSync( './temp_test/purged/' );
+    if ( !fs.existsSync( `./${tempDirName}/purged/` ) ) {
+        fs.mkdirSync( `./${tempDirName}/purged/` );
+    }
     for ( const stylesheet of result ) {
         css += stylesheet.css;
         fs.writeFileSync(
-            path.resolve( `./temp_test/purged/${extractFileUri( stylesheet.file )}.purged.css` ),
+            path.resolve( `./${tempDirName}/purged/${extractFileUri( stylesheet.file )}.purged.css` ),
             stylesheet.css
         );
     }
 
     console.log( 'Calculating reduction factor' );
 
-    const rf = reductionFactor();
+    const rf = reductionFactor( tempDirName );
 
     // cleanup!
+    console.log( 'Cleaning up temp dir' );
     fs.rmSync(
-        './temp_test/',
+        `./${tempDirName}/`,
         {
             recursive: true,
             force: true
         }
     );
 
+    const cleanCSS = new CleanCSS( {
+        format: {
+            breaks: { // controls where to insert breaks
+                afterAtRule: false, // controls if a line break comes after an at-rule; e.g. `@charset`; defaults to `false`
+                afterBlockBegins: false, // controls if a line break comes after a block begins; e.g. `@media`; defaults to `false`
+                afterBlockEnds: false, // controls if a line break comes after a block ends, defaults to `false`
+                afterComment: false, // controls if a line break comes after a comment; defaults to `false`
+                afterProperty: false, // controls if a line break comes after a property; defaults to `false`
+                afterRuleBegins: false, // controls if a line break comes after a rule begins; defaults to `false`
+                afterRuleEnds: false, // controls if a line break comes after a rule ends; defaults to `false`
+                beforeBlockEnds: false, // controls if a line break comes before a block ends; defaults to `false`
+                betweenSelectors: false // controls if a line break comes between selectors; defaults to `false`
+            },
+            breakWith: '\n', // controls the new line character, can be `'\r\n'` or `'\n'` (aliased as `'windows'` and `'unix'` or `'crlf'` and `'lf'`); defaults to system one, so former on Windows and latter on Unix
+            indentBy: 0, // controls number of characters to indent with; defaults to `0`
+            indentWith: 'space', // controls a character to indent with, can be `'space'` or `'tab'`; defaults to `'space'`
+            spaces: { // controls where to insert spaces
+                aroundSelectorRelation: false, // controls if spaces come around selector relations; e.g. `div > a`; defaults to `false`
+                beforeBlockBegins: false, // controls if a space comes before a block begins; e.g. `.block {`; defaults to `false`
+                beforeValue: false // controls if a space comes before a value; e.g. `width: 1rem`; defaults to `false`
+            },
+            wrapAt: false, // controls maximum line length; defaults to `false`
+            semicolonAfterLastProperty: false // controls removing trailing semicolons in rule; defaults to `false` - means remove
+        }
+    } );
+
+    const minified = cleanCSS.minify( css );
+    const totalRF = 1 - ( minified.stats.minifiedSize / rf.originalSize ) || 0;
+
+    const processingTime = Date.now() - startTime;
+
+    console.log( 'Serving result' );
     res.json( {
-        reductionFactor: rf,
-        css: css
+        stats: {
+            processingTime: processingTime,
+            purge: rf,
+            minify: {
+                reductionFactor: minified.stats.efficiency,
+                originalSize: minified.stats.originalSize,
+                minifiedSize: minified.stats.minifiedSize,
+            },
+            total: {
+                reductionFactor: totalRF,
+                originalSize: rf.originalSize,
+                finalSize: minified.stats.minifiedSize,
+            }
+        },
+        css: minified.styles
     } );
 } );

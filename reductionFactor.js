@@ -4,14 +4,14 @@ import {
     extractFileUri
 } from './linkinPark.js';
 
-export default function reductionFactor () {
-    const files = glob.sync( './temp_test/*.css' );
+export default function reductionFactor ( dirName ) {
+    const files = glob.sync( `./${dirName}/*.css` );
 
     const sizes = files.map( f => {
         const uri = extractFileUri( f );
         return [
             fs.statSync( f ).size,
-            fs.statSync( `./temp_test/purged/${uri}.purged.css` ).size
+            fs.statSync( `./${dirName}/purged/${uri}.purged.css` ).size
         ];
     } );
 
@@ -26,8 +26,8 @@ export default function reductionFactor () {
     const reductionFactor = after / before;
 
     return {
-        before,
-        after,
-        factor: 1 - reductionFactor
+        originalSize: before,
+        purgedSize: after,
+        reductionFactor: 1 - reductionFactor || 0
     };
 }

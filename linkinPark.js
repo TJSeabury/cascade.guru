@@ -62,6 +62,18 @@ export const getAnchors = dom => {
     return anchors;
 };
 
+export function domainFromUrl ( url ) {
+    let result;
+    let match;
+    if ( match = url.match( /^(?:https?:\/\/)?(?:[^@\n]+@)?(?:www\.)?([^:\/\n\?\=]+)/im ) ) {
+        result = match[1];
+        if ( match = result.match( /^[^\.]+\.(.+\..+)$/ ) ) {
+            result = match[1];
+        }
+    }
+    return result;
+}
+
 export const linkIsAbsolute = link => /^https?:\/\//.test( link );
 
 export const linkIsRelative = link => !linkIsAbsolute( link );
@@ -73,6 +85,12 @@ export const linkIsLocal = ( link, domain ) => {
 
 export const linkIsExternal = ( link, domain ) => !linkIsLocal( link, domain );
 
+/**
+ * What even is this logic here...
+ * @todo fix this...
+ * @param {string} u 
+ * @returns boolean
+ */
 export const isUrl = u => {
     try {
         if ( linkIsAbsolute( u ) ) {
