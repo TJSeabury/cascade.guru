@@ -4,7 +4,6 @@
     "private": true,
     "description": "SaaS that crawls a live site, gathers the target page's css, and returns an optimized bundle.",
     "main": "index.js",
-    "type": "module",
     "scripts": {
         "dev": "next dev",
         "build": "next build",
