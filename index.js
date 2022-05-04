@@ -215,8 +215,7 @@ app.post( '/', async ( req, res ) => {
 
 
     console.log( 'Purging CSS' );
-
-    const result = await ( new PurgeCSS() ).purge( {
+    const result = await new PurgeCSS().purge( {
         content: [`./${tempDirName}/**/*.html`],
         css: [`./${tempDirName}/**/*.css`],
         safelist: purgecssWordpress.safelist
@@ -226,7 +225,6 @@ app.post( '/', async ( req, res ) => {
     }
 
     console.log( 'Writing purged stylesheet' );
-
     let css = '';
     if ( !fs.existsSync( `./${tempDirName}/purged/` ) ) {
         fs.mkdirSync( `./${tempDirName}/purged/` );
