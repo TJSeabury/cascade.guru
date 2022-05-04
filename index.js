@@ -95,17 +95,17 @@ app.post( '/', async ( req, res ) => {
         res.status( 401 ).send( 'Authentication failed.' );
     }
 
-    const target = req?.body?.target;
+    const target = urlResolver( req?.body?.target );
     if ( !target ) {
-        res.status( 422 ).send( 'Must provide a target URL.' );
+        res.status( 422 ).send( 'Must provide a valid target URL.' );
     }
-
-    console.log( 'Getting HTML' );
 
     const startTime = Date.now();
 
     const targetHostname = new URL( target ).hostname;
 
+    console.log( 'Getting HTML' );
+    const tempDirName = _.uniqueId( `${Date.now()}_${targetHostname}` );
 
     const [html, error] = await getHtml( target );
     if ( error !== null ) {
@@ -141,12 +141,13 @@ app.post( '/', async ( req, res ) => {
 
     for ( const l of links ) {
         if ( linkIsRelative( l.href ) ) {
-            let temp = `http://${target}${l.href}`;
+            console.log( 'Attempting to resolve relative url...', l.href );
+            let temp = urlResolver( l.href, targetHostname );
             if ( isUrl( temp ) ) {
                 l.href = temp;
             } else {
                 console.error( 'Error: not a url!', l.href, temp );
-                continue;
+                return;
             }
         }
         const response = await fetch( l.href );
