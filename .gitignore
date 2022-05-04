@@ -1,49 +1,41 @@
-# ignore 3rd party libraries and packages
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
 node_modules/
 vendor/
 compiled/
 temp_*/
+/.pnp
+.pnp.js
 
-# ignore all files starting with . or ~
-.*
-~*
+# testing
+/coverage
 
-# ignore node dependency directories (used by grunt)
-node_modules/
+# next.js
+/.next/
+/out/
 
-# ignore OS generated files
+# production
+/build
+
+# misc
 ehthumbs.db
 Thumbs.db
+.DS_Store
+*.pem
 
-# ignore Editor files
-*.sublime-project
-*.sublime-workspace
-*.komodoproject
-*.codekit3
-.idea
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
 
-# ignore log files and databases
-*.log
-*.sql
-*.sqlite
+# local env files
+.env*.local
 
-# ignore compiled files
-*.com
-*.class
-*.dll
-*.exe
-*.o
-*.so
+# vercel
+.vercel
 
-# ignore packaged files
-*.7z
-*.dmg
-*.gz
-*.iso
-*.jar
-*.rar
-*.tar
-*.zip
 
 # -------------------------
 # BEGIN Whitelisted Files
