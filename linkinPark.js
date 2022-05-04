@@ -36,9 +36,9 @@ export const getHtml = async ( target = null ) => {
     const response = await fetch( target );
     if ( response.status === 200 ) {
         const html = await response.text();
-        return html;
+        return [html, null];
     }
-    return null;
+    return [null, response];
 };
 
 export const parseDom = html => {

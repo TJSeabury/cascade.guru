@@ -104,13 +104,20 @@ app.post( '/', async ( req, res ) => {
 
     const startTime = Date.now();
 
-    const tempDirName = _.uniqueId( `${Date.now()}_${domainFromUrl( target )}` );
+    const targetHostname = new URL( target ).hostname;
 
-    const testHtml = await getHtml( `http://${target}/` );
-    if ( !fs.existsSync( `./${tempDirName}/` ) ) fs.mkdirSync( `./${tempDirName}/` );
+
+    const [html, error] = await getHtml( target );
+    if ( error !== null ) {
+        res.status( 422 ).send( `${target} responded with status ${error.status}` );
+        return;
+    }
+    if ( !fs.existsSync( path.resolve( `./${tempDirName}/` ) ) ) {
+        fs.mkdirSync( path.resolve( `./${tempDirName}/` ) );
+    }
     fs.writeFileSync(
         path.resolve( `./${tempDirName}/temp.html` ),
-        testHtml
+        html
     );
 
     const virtualConsole = new VirtualConsole();
@@ -118,7 +125,7 @@ app.post( '/', async ( req, res ) => {
         // No-op to skip console errors.
     } );
     // Get them stylesheet links.
-    const dom = new JSDOM( testHtml, { virtualConsole } );
+    const dom = new JSDOM( html, { virtualConsole } );
     if ( !dom ) {
         res.status( 500 ).send( 'Failed to create vDOM. :c' );
     }
