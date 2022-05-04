@@ -48,7 +48,6 @@ export const parseDom = html => {
     const virtualConsole = new VirtualConsole();
     virtualConsole.on( "error", () => {/* No-op to skip console errors. */ } );
 
-    // Get them links!
     const dom = new JSDOM( html, { virtualConsole } );
     if ( !dom ) return null;
 
