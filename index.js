@@ -26,6 +26,7 @@ import {
 } from './linkinPark.js';
 import { PurgeCSS } from "purgecss";
 import purgecssWordpress from 'purgecss-with-wordpress';
+import stylelint from 'stylelint';
 
 import {
     JSDOM,
@@ -177,7 +178,41 @@ app.post( '/', async ( req, res ) => {
             sheet.data
         );
     }
-    }
+
+    console.log( 'Linting CSS' ); // to prevent PurgeCSS from crashing.
+
+    const errors = [];
+
+    await stylelint
+        .lint( {
+            config: {
+                rules: [
+                    "color-no-invalid-hex",
+                    "property-no-unknown"]
+            },
+            files: `./${tempDirName}/*.css`
+        } )
+        .then( function ( data ) {
+            data.results.map( d => {
+                if ( d.errored === true ) {
+                    fs.rmSync( path.resolve( d.source ) );
+                    errors.push( {
+                        file: path.basename( d.source ),
+                        errors: d.warnings
+                    } );
+                    return;
+                }
+                fs.writeFileSync(
+                    path.resolve( d.source ),
+                    d._postcssResult.css
+                );
+            } );
+        } )
+        .catch( function ( err ) {
+            // do things with err e.g.
+            console.error( err.stack );
+        } );
+
 
     console.log( 'Purging CSS' );
 
@@ -265,6 +300,7 @@ app.post( '/', async ( req, res ) => {
                 finalSize: minified.stats.minifiedSize,
             }
         },
-        css: minified.styles
+        errors: errors,
+        css: minified.styles,
     } );
 } );
