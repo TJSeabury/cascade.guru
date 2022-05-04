@@ -136,8 +136,7 @@ app.post( '/', async ( req, res ) => {
     }
 
     console.log( 'Downloading CSS' );
-
-    for ( const l of links ) {
+    const stylesheets = await Promise.all( links.map( l => {
         if ( linkIsRelative( l.href ) ) {
             console.log( 'Attempting to resolve relative url...', l.href );
             let temp = urlResolver( l.href, targetHostname );
@@ -148,18 +147,36 @@ app.post( '/', async ( req, res ) => {
                 return;
             }
         }
-        const response = await fetch( l.href );
-        if ( response.status === 200 ) {
-            let fileUri = extractFileUri( l.href );
-            if ( !fileUri ) {
-                fileUri = _.uniqueId( Date.now() );
+        return fetch( l.href );
+    } ) ).then( responses =>
+        Promise.all( responses.map( async res => {
+            if ( res.status === 200 ) {
+                return {
+                    url: res.url,
+                    data: await res.text()
+                };
             }
-            const data = await response.text();
-            fs.writeFileSync(
-                path.resolve( `./${tempDirName}/temp_${fileUri}.css` ),
-                data
-            );
+            return {
+                url: res.url,
+                data: null
+            };
+        } ) )
+    );
+    for ( const sheet of stylesheets ) {
+        if ( sheet.data === null ) {
+            console.error( `Something went wrong! ${sheet.url
+                } is null.` );
+            continue;
         }
+        let fileUri = extractFileUri( sheet.url );
+        if ( !fileUri ) {
+            fileUri = _.uniqueId( Date.now() );
+        }
+        fs.writeFileSync(
+            path.resolve( `./${tempDirName}/${fileUri}.css` ),
+            sheet.data
+        );
+    }
     }
 
     console.log( 'Purging CSS' );
