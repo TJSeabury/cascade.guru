@@ -1,7 +1,7 @@
 {
     "name": "@tjseabury/purgecss.ninja",
-    "version": "0.1.0",
-    "description": "A webservice that crawls a live site, gathers the css and html, and returns a bundle with unused css purged.",
+    "version": "0.6.0",
+    "description": "SaaS that crawls a live site, gathers the target page's css, and returns an optimized bundle.",
     "main": "index.js",
     "type": "module",
     "scripts": {
