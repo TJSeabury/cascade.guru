@@ -7,6 +7,7 @@ const {
 // Bring in the ability to create the 'require' method
 import { createRequire } from "module";
 import { fileURLToPath } from 'url';
+import { URL } from 'url';
 
 import express from 'express';
 import connectLivereload from 'connect-livereload';
@@ -18,13 +19,10 @@ import {
 } from './authorization.js';
 import {
     isUrl,
-    isNotUrl,
-    getHead,
     getHtml,
-    parseDom,
     extractFileUri,
-    domainFromUrl,
-    linkIsRelative
+    linkIsRelative,
+    urlResolver,
 } from './linkinPark.js';
 import { PurgeCSS } from "purgecss";
 import purgecssWordpress from 'purgecss-with-wordpress';
