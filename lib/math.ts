@@ -1,0 +1,1 @@
+export const round = (num: number, n: number): number => Math.round((num + Number.EPSILON) * (10 ** n)) / (10 ** n);

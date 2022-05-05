@@ -12,14 +12,16 @@ import _ from 'lodash';
 import {
     credentialsFromBasicAuth,
     authenticate
-} from './../../authorization.js';
+} from '../../authorization';
+import {
+    getHtml,
+} from '../../lib/crawling';
 import {
     isUrl,
-    getHtml,
-    extractFileUri,
     linkIsRelative,
     urlResolver,
-} from './../../linkinPark.js';
+    extractFileUri,
+} from '../../lib/url';
 import { PurgeCSS } from "purgecss";
 import purgecssWordpress from 'purgecss-with-wordpress';
 import stylelint from 'stylelint';
@@ -28,19 +30,20 @@ import {
     VirtualConsole
 } from 'jsdom';
 import fetch from 'node-fetch';
-import reductionFactor from './../../reductionFactor.js';
+import reductionFactor from '../../lib/reductionFactor';
+import type { NextApiRequest, NextApiResponse } from 'next';
 
 // construct the require method
-const require = createRequire( import.meta.url );
+const require = createRequire(import.meta.url);
 // Solves: "__dirname is not defined in ES module scope"
-const __filename = fileURLToPath( import.meta.url );
-const __dirname = path.dirname( __filename );
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-const bodyParser = require( 'body-parser' );
+const bodyParser = require('body-parser');
 
-const CleanCSS = require( 'clean-css' );
+const CleanCSS = require('clean-css');
 
-if ( mode === 'production' ) {
+if (mode === 'production') {
     // haha y'all don't work now.
     console.log = () => { };
     console.warn = () => { };
@@ -52,16 +55,16 @@ if ( mode === 'production' ) {
 //app.use( bodyParser.json() );
 
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
-export default async function handler ( req, res ) {
-    if ( req.method === 'POST' ) {
-        await postHandler( req, res );
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+    if (req.method === 'POST' || req.method === 'GET') {
+        await postHandler(req, res);
     } else {
-        res.status( 404 ).send( 'Endpoint not found.' );
+        res.status(404).send('Endpoint not found.');
     }
 }
 
-async function postHandler ( req, res ) {
-    const [
+async function postHandler(req: NextApiRequest, res: NextApiResponse) {
+    /* const [
         username,
         password
     ] = credentialsFromBasicAuth( req );
@@ -70,157 +73,161 @@ async function postHandler ( req, res ) {
 
     if ( !ok ) {
         res.status( 401 ).send( 'Authentication failed.' );
-    }
+    } */
 
-    const target = urlResolver( req?.body?.target );
-    if ( !target ) {
-        res.status( 422 ).send( 'Must provide a valid target URL.' );
+    let tempTarget = <string>req?.query?.target
+
+    const [target, urlResolverErr] = urlResolver(tempTarget);
+    if (!target || urlResolverErr) {
+        res.status(422).send('Must provide a valid target URL.');
+        return;
     }
 
     const startTime = Date.now();
 
-    const targetHostname = new URL( target ).hostname;
+    const targetHostname = new URL(target).hostname;
 
-    console.log( 'Getting HTML' );
-    const tempDirName = _.uniqueId( `${Date.now()}_${targetHostname}` );
+    console.log('Getting HTML');
+    const tempDirName = _.uniqueId(`${Date.now()}_${targetHostname}`);
 
-    const [html, error] = await getHtml( target );
-    if ( error !== null ) {
-        res.status( 422 ).send( `${target} responded with status ${error.status}` );
+    const [html, error] = await getHtml(target);
+    if (!html || error !== null) {
+        res.status(422).send(`${target} responded with status ${error.status}`);
         return;
     }
-    if ( !fs.existsSync( path.resolve( `./${tempDirName}/` ) ) ) {
-        fs.mkdirSync( path.resolve( `./${tempDirName}/` ) );
+    if (!fs.existsSync(path.resolve(`./${tempDirName}/`))) {
+        fs.mkdirSync(path.resolve(`./${tempDirName}/`));
     }
     fs.writeFileSync(
-        path.resolve( `./${tempDirName}/temp.html` ),
+        path.resolve(`./${tempDirName}/temp.html`),
         html
     );
 
     const virtualConsole = new VirtualConsole();
-    virtualConsole.on( "error", () => {
+    virtualConsole.on("error", () => {
         // No-op to skip console errors.
-    } );
+    });
     // Get them stylesheet links.
-    const dom = new JSDOM( html, { virtualConsole } );
-    if ( !dom ) {
-        res.status( 500 ).send( 'Failed to create vDOM. :c' );
+    const dom = new JSDOM(html, { virtualConsole });
+    if (!dom) {
+        res.status(500).send('Failed to create vDOM. :c');
     }
 
-    console.log( 'Finding stylesheets' );
+    console.log('Finding stylesheets');
 
-    const links = Array.from( dom.window.document.querySelectorAll( 'link[rel="stylesheet"]' ) );
-    if ( !links ) {
-        res.status( 500 ).send( 'No <link>s found. :c' );
+    const links = <HTMLAnchorElement[]>Array.from(dom.window.document.querySelectorAll('link[rel="stylesheet"]'));
+    if (!links) {
+        res.status(500).send('No <link>s found. :c');
     }
 
-    console.log( 'Downloading CSS' );
-    const stylesheets = await Promise.all( links.map( l => {
-        if ( linkIsRelative( l.href ) ) {
-            console.log( 'Attempting to resolve relative url...', l.href );
-            let temp = urlResolver( l.href, targetHostname );
-            if ( isUrl( temp ) ) {
+    console.log('Downloading CSS');
+    const stylesheets = await Promise.all(links.map((l: HTMLAnchorElement) => {
+        if (linkIsRelative(l.href)) {
+            console.log('Attempting to resolve relative url...', l.href);
+            let [temp, err] = urlResolver(l.href, targetHostname);
+            if (isUrl(temp) && err === null) {
                 l.href = temp;
             } else {
-                console.error( 'Error: not a url!', l.href, temp );
+                console.error('Error: not a url!', l.href, temp);
                 return;
             }
         }
-        return fetch( l.href );
-    } ) ).then( responses =>
-        Promise.all( responses.map( async res => {
-            if ( res.status === 200 ) {
+        return fetch(l.href);
+    })).then(responses =>
+        Promise.all(responses.map(async res => {
+            if (res?.status === 200) {
                 return {
                     url: res.url,
                     data: await res.text()
                 };
             }
             return {
-                url: res.url,
+                url: res?.url,
                 data: null
             };
-        } ) )
+        }))
     );
-    for ( const sheet of stylesheets ) {
-        if ( sheet.data === null ) {
-            console.error( `Something went wrong! ${sheet.url
-                } is null.` );
+    for (const sheet of stylesheets) {
+        if (sheet.data === null) {
+            console.error(`Something went wrong! ${sheet.url
+                } is null.`);
             continue;
         }
-        let fileUri = extractFileUri( sheet.url );
-        if ( !fileUri ) {
-            fileUri = _.uniqueId( Date.now() );
+        let [fileUri, err] = extractFileUri(sheet.url);
+        if (err) {
+            fileUri = _.uniqueId(String(Date.now()));
         }
         fs.writeFileSync(
-            path.resolve( `./${tempDirName}/${fileUri}.css` ),
+            path.resolve(`./${tempDirName}/${fileUri}.css`),
             sheet.data
         );
     }
 
-    console.log( 'Linting CSS' ); // to prevent PurgeCSS from crashing.
+    console.log('Linting CSS'); // to prevent PurgeCSS from crashing.
 
-    const errors = [];
+    const errors: { file: string; errors: stylelint.Warning[]; }[] = [];
 
     await stylelint
-        .lint( {
+        .lint({
             config: {
                 rules: [
                     "color-no-invalid-hex",
                     "property-no-unknown"]
             },
             files: `./${tempDirName}/*.css`
-        } )
-        .then( function ( data ) {
-            data.results.map( d => {
-                if ( d.errored === true ) {
-                    fs.rmSync( path.resolve( d.source ) );
-                    errors.push( {
-                        file: path.basename( d.source ),
+        })
+        .then(function (data) {
+            data.results.map(d => {
+                if (d.errored === true) {
+                    fs.rmSync(path.resolve(d.source || ''));
+                    errors.push({
+                        file: path.basename(d.source || ''),
                         errors: d.warnings
-                    } );
+                    });
                     return;
                 }
                 fs.writeFileSync(
-                    path.resolve( d.source ),
-                    d._postcssResult.css
+                    path.resolve(d.source || ''),
+                    // @ts-ignore
+                    d._postcssResult?.css
                 );
-            } );
-        } )
-        .catch( function ( err ) {
+            });
+        })
+        .catch(function (err) {
             // do things with err e.g.
-            console.error( err.stack );
-        } );
+            console.error(err.stack);
+        });
 
 
-    console.log( 'Purging CSS' );
-    const result = await new PurgeCSS().purge( {
+    console.log('Purging CSS');
+    const result = await new PurgeCSS().purge({
         content: [`./${tempDirName}/**/*.html`],
         css: [`./${tempDirName}/**/*.css`],
         safelist: purgecssWordpress.safelist
-    } );
-    if ( !result ) {
-        res.status( 500 ).send( 'Failed to purge. :c' );
+    });
+    if (!result) {
+        res.status(500).send('Failed to purge. :c');
     }
 
-    console.log( 'Writing purged stylesheet' );
+    console.log('Writing purged stylesheet');
     let css = '';
-    if ( !fs.existsSync( `./${tempDirName}/purged/` ) ) {
-        fs.mkdirSync( `./${tempDirName}/purged/` );
+    if (!fs.existsSync(`./${tempDirName}/purged/`)) {
+        fs.mkdirSync(`./${tempDirName}/purged/`);
     }
-    for ( const stylesheet of result ) {
+    for (const stylesheet of result) {
         css += stylesheet.css;
         fs.writeFileSync(
-            path.resolve( `./${tempDirName}/purged/${extractFileUri( stylesheet.file )}.purged.css` ),
+            path.resolve(`./${tempDirName}/purged/${extractFileUri(stylesheet.file || null)}.purged.css`),
             stylesheet.css
         );
     }
 
-    console.log( 'Calculating reduction factor' );
+    console.log('Calculating reduction factor');
 
-    const rf = reductionFactor( tempDirName );
+    const rf = reductionFactor(tempDirName);
 
     // cleanup!
-    console.log( 'Cleaning up temp dir' );
+    console.log('Cleaning up temp dir');
     fs.rmSync(
         `./${tempDirName}/`,
         {
@@ -229,7 +236,7 @@ async function postHandler ( req, res ) {
         }
     );
 
-    const cleanCSS = new CleanCSS( {
+    const cleanCSS = new CleanCSS({
         format: {
             breaks: { // controls where to insert breaks
                 afterAtRule: false, // controls if a line break comes after an at-rule; e.g. `@charset`; defaults to `false`
@@ -253,15 +260,15 @@ async function postHandler ( req, res ) {
             wrapAt: false, // controls maximum line length; defaults to `false`
             semicolonAfterLastProperty: false // controls removing trailing semicolons in rule; defaults to `false` - means remove
         }
-    } );
+    });
 
-    const minified = cleanCSS.minify( css );
-    const totalRF = 1 - ( minified.stats.minifiedSize / rf.originalSize ) || 0;
+    const minified = cleanCSS.minify(css);
+    const totalRF = 1 - (minified.stats.minifiedSize / rf.originalSize) || 0;
 
     const processingTime = Date.now() - startTime;
 
-    console.log( 'Serving result' );
-    res.json( {
+    console.log('Serving result');
+    res.json({
         stats: {
             processingTime: processingTime,
             purge: rf,
@@ -278,5 +285,5 @@ async function postHandler ( req, res ) {
         },
         errors: errors,
         css: minified.styles,
-    } );
+    });
 }
