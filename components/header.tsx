@@ -72,33 +72,23 @@ export default function Header() {
             </Link>
           </li>
           <li className={styles.navItem}>
-            <Link href="/client">
-              <a>Client</a>
-            </Link>
-          </li>
-          <li className={styles.navItem}>
-            <Link href="/server">
-              <a>Server</a>
-            </Link>
-          </li>
-          <li className={styles.navItem}>
-            <Link href="/protected">
-              <a>Protected</a>
+            <Link href="/dashboard">
+              <a>Dashboard</a>
             </Link>
           </li>
           <li className={styles.navItem}>
             <Link href="/api-example">
-              <a>API</a>
+              <a>Documentation</a>
             </Link>
           </li>
           <li className={styles.navItem}>
             <Link href="/admin">
-              <a>Admin</a>
+              <a>Users</a>
             </Link>
           </li>
           <li className={styles.navItem}>
             <Link href="/me">
-              <a>Me</a>
+              <a>Profile</a>
             </Link>
           </li>
         </ul>
