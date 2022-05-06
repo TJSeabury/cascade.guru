@@ -10,18 +10,17 @@ import { fileURLToPath } from 'url';
 import { URL } from 'url';
 import _ from 'lodash';
 import {
-    credentialsFromBasicAuth,
     authenticate
-} from '../../authorization';
+} from '../../../lib/authorization';
 import {
     getHtml,
-} from '../../lib/crawling';
+} from '../../../lib/crawling';
 import {
     isUrl,
     linkIsRelative,
     urlResolver,
     extractFileUri,
-} from '../../lib/url';
+} from '../../../lib/url';
 import { PurgeCSS } from "purgecss";
 import purgecssWordpress from 'purgecss-with-wordpress';
 import stylelint from 'stylelint';
@@ -30,16 +29,17 @@ import {
     VirtualConsole
 } from 'jsdom';
 import fetch from 'node-fetch';
-import reductionFactor from '../../lib/reductionFactor';
+import reductionFactor from '../../../lib/reductionFactor';
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient()
 
 // construct the require method
 const require = createRequire(import.meta.url);
 // Solves: "__dirname is not defined in ES module scope"
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-const bodyParser = require('body-parser');
 
 const CleanCSS = require('clean-css');
 
@@ -51,36 +51,35 @@ if (mode === 'production') {
     console.dir = () => { };
 }
 
-//app.use( bodyParser.urlencoded( { extended: true } ) );
-//app.use( bodyParser.json() );
-
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-    if (req.method === 'POST' || req.method === 'GET') {
+    if (req.method === 'POST') {
         await postHandler(req, res);
     } else {
-        res.status(404).send('Endpoint not found.');
+        res.status(404).json('Endpoint not found.');
     }
 }
 
 async function postHandler(req: NextApiRequest, res: NextApiResponse) {
-    /* const [
-        username,
-        password
-    ] = credentialsFromBasicAuth( req );
+    console.log(req.body);
+    const { email, targetUrl, apiKey } = req.body;
+    console.log(email, targetUrl, apiKey);
 
-    const ok = authenticate( username, password );
+    const user = await prisma.user.findUnique({
+        where: {
+            email: email
+        }
+    })
 
-    if ( !ok ) {
-        res.status( 401 ).send( 'Authentication failed.' );
-    } */
+    if (!user) return res.status(401).json(`Authentication failed. User with email <${email}> not found.`);
 
-    let tempTarget = <string>req?.query?.target
+    const ok = await authenticate(user, apiKey, targetUrl);
 
-    const [target, urlResolverErr] = urlResolver(tempTarget);
+    if (!ok) return res.status(401).json('Authentication failed.');
+
+    const [target, urlResolverErr] = urlResolver(targetUrl);
     if (!target || urlResolverErr) {
-        res.status(422).send('Must provide a valid target URL.');
-        return;
+        return res.status(422).json('Must provide a valid target URL.');
     }
 
     const startTime = Date.now();
@@ -92,7 +91,7 @@ async function postHandler(req: NextApiRequest, res: NextApiResponse) {
 
     const [html, error] = await getHtml(target);
     if (!html || error !== null) {
-        res.status(422).send(`${target} responded with status ${error.status}`);
+        res.status(422).json(`${target} responded with status ${error.status}`);
         return;
     }
     if (!fs.existsSync(path.resolve(`./${tempDirName}/`))) {
@@ -110,14 +109,14 @@ async function postHandler(req: NextApiRequest, res: NextApiResponse) {
     // Get them stylesheet links.
     const dom = new JSDOM(html, { virtualConsole });
     if (!dom) {
-        res.status(500).send('Failed to create vDOM. :c');
+        res.status(500).json('Failed to create vDOM. :c');
     }
 
     console.log('Finding stylesheets');
 
     const links = <HTMLAnchorElement[]>Array.from(dom.window.document.querySelectorAll('link[rel="stylesheet"]'));
     if (!links) {
-        res.status(500).send('No <link>s found. :c');
+        res.status(500).json('No <link>s found. :c');
     }
 
     console.log('Downloading CSS');
@@ -206,7 +205,7 @@ async function postHandler(req: NextApiRequest, res: NextApiResponse) {
         safelist: purgecssWordpress.safelist
     });
     if (!result) {
-        res.status(500).send('Failed to purge. :c');
+        res.status(500).json('Failed to purge. :c');
     }
 
     console.log('Writing purged stylesheet');
@@ -284,6 +283,6 @@ async function postHandler(req: NextApiRequest, res: NextApiResponse) {
             }
         },
         errors: errors,
-        css: minified.styles,
+        css: '/* Optimized by https://cascade.guru/ */' + minified.styles,
     });
 }
