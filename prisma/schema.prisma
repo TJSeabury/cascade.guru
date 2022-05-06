@@ -8,18 +8,28 @@ datasource db {
 }
 
 model User {
-    id       Int      @id @default(autoincrement())
-    email    String   @unique @db.VarChar(255)
-    password String   @db.VarChar(255)
-    verified Boolean  @default(false) @db.Boolean
-    forename String?  @db.VarChar(255)
-    surname  String?  @db.VarChar(255)
-    profile  Profile?
+    id         Int        @id @default(autoincrement())
+    email      String     @unique @db.VarChar(255)
+    password   String     @db.VarChar(255)
+    verified   Boolean    @default(false) @db.Boolean
+    forename   String?    @db.VarChar(255)
+    surname    String?    @db.VarChar(255)
+    userRole   String     @default("user") @db.VarChar(255)
+    profile    Profile?
+    properties Property[]
 }
 
 model Profile {
     id     Int     @id @default(autoincrement())
     bio    String?
+    user   User    @relation(fields: [userId], references: [id])
     userId Int     @unique
-    user   User    @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model Property {
+    id      Int    @id @default(autoincrement())
+    domain  String @unique @db.VarChar(255)
+    apiKey  String @unique @db.VarChar(255)
+    owner   User   @relation(fields: [ownerId], references: [id])
+    ownerId Int
 }
