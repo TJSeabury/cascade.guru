@@ -1,10 +1,6 @@
 import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
-import { PrismaClient } from '@prisma/client'
-import { login } from "../../../authorization"
-
-
-const prisma = new PrismaClient()
+import { login } from "../../../lib/authorization"
 
 // For more information on each option (and a full list of options) go to
 // https://next-auth.js.org/configuration/options
@@ -23,7 +19,6 @@ export default NextAuth({
                 password: { label: "Password", type: "password" }
             },
             async authorize(credentials, req) {
-                console.log(credentials?.username, credentials?.password);
                 const user = await login(credentials?.username, credentials?.password)
                 console.log(user);
                 if (user) {
@@ -37,8 +32,18 @@ export default NextAuth({
         colorScheme: "light",
     },
     callbacks: {
-        async jwt({ token }) {
-            token.userRole = "admin"
+        async jwt({
+            token,
+            user
+        }) {
+            if (user) {
+                if (user.userRole === 'admin') {
+                    token.userRole = "admin"
+                } else {
+                    token.userRole = "user"
+                }
+            }
+
             return token
         },
     },
