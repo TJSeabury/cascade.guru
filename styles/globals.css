@@ -6,6 +6,36 @@ body {
     Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
 }
 
+#__next {
+  display: grid;
+}
+@media (min-width: 1024px) {
+  #__next {
+    display: grid;
+    grid-template-areas:
+      "main header"
+      "footer header";
+    grid-template-columns: 80vw 20vw;
+    grid-template-rows: 8fr auto;
+    min-height: 100vh;
+  }
+}
+.appHeader {
+  grid-area: header;
+  background-color: #222;
+}
+.appMain {
+  grid-area: main;
+  padding: 2rem;
+  background-color: hsl(182, 100%, 16%);
+  color: white;
+}
+.appFooter {
+  grid-area: footer;
+  background-color: #1c1c1c;
+  color: white;
+}
+
 a {
   color: inherit;
   text-decoration: none;
