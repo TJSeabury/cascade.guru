@@ -1,35 +1,35 @@
 generator client {
-    provider = "prisma-client-js"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-    provider = "postgresql"
-    url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 model User {
-    id         Int        @id @default(autoincrement())
-    email      String     @unique @db.VarChar(255)
-    password   String     @db.VarChar(255)
-    verified   Boolean    @default(false) @db.Boolean
-    forename   String?    @db.VarChar(255)
-    surname    String?    @db.VarChar(255)
-    userRole   String     @default("user") @db.VarChar(255)
-    profile    Profile?
-    properties Property[]
+  id         Int        @id @default(autoincrement())
+  email      String     @unique
+  password   String
+  verified   Boolean    @default(false)
+  forename   String?
+  surname    String?
+  userRole   String     @default("user")
+  profile    Profile?
+  properties Property[]
 }
 
 model Profile {
-    id     Int     @id @default(autoincrement())
-    bio    String?
-    user   User    @relation(fields: [userId], references: [id])
-    userId Int     @unique
+  id     Int     @id @default(autoincrement())
+  bio    String?
+  user   User    @relation(fields: [userId], references: [id])
+  userId Int     @unique
 }
 
 model Property {
-    id      Int    @id @default(autoincrement())
-    domain  String @unique @db.VarChar(255)
-    apiKey  String @unique @db.VarChar(255)
-    owner   User   @relation(fields: [ownerId], references: [id])
-    ownerId Int
+  id      Int    @id @default(autoincrement())
+  domain  String @unique
+  apiKey  String @unique
+  owner   User   @relation(fields: [ownerId], references: [id])
+  ownerId Int
 }
