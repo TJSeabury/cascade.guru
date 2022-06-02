@@ -21,13 +21,19 @@ export class StyleSource {
       this.hasHref(this.source)
     ) {
       this._name = this.createSourceName(this.source.href);
-      this._data = this.downloadData(this.source.href);
+      this._data = this.maybeWrapInMediaQuery(
+        this.source,
+        this.downloadData(this.source.href)
+      );
     } else if (this.source.tagName === 'STYLE') {
       this._name = this.createSourceName('inline');
       if (this.source.innerHTML === null) {
         console.error(`Something went wrong! Inline stylesheet is null: ${this.source.innerHTML}`);
       }
-      this._data = Promise.resolve(this.source.innerHTML);
+      this._data = this.maybeWrapInMediaQuery(
+        this.source,
+        Promise.resolve(this.source.innerHTML)
+      );
     } else {
       throw new Error('Invalid Element type: input must be HTMLLinkElement | HTMLStyleElement !');
     }
@@ -45,6 +51,25 @@ export class StyleSource {
   hasHref(el: HTMLElement): el is HTMLLinkElement {
     return 'href' in el;
   };
+  hasMedia(el: HTMLElement): el is HTMLElement {
+    return 'media' in el;
+  }
+
+  extractMediaRule(el: HTMLElement): [string, Error | null] {
+    const rule = el.getAttribute('media');
+    if (!rule) return ['', new Error('No media rule found!')];
+    return [rule, null];
+  }
+
+  async maybeWrapInMediaQuery(el: HTMLElement, data: Promise<string>): Promise<string> {
+    if (this.hasMedia(el)) {
+      const [rule, err] = this.extractMediaRule(el);
+      if (err === null) {
+        return `@media ${rule} {${await data}}`;
+      }
+    }
+    return data;
+  }
 
   createSourceName(url: string): string {
     const [fileUri, err] = extractFileUri(url);
