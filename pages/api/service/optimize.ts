@@ -2,28 +2,28 @@ import fs from 'fs';
 import path from 'path';
 import 'dotenv/config';
 const {
-  mode
+    mode
 } = process.env;
 // Bring in the ability to create the 'require' method
 import { createRequire } from "module";
 import { URL } from 'url';
 import _ from 'lodash';
 import {
-  authenticate
+    authenticate
 } from '../../../lib/authorization';
 import {
-  getHtml,
+    getHtml,
 } from '../../../lib/crawling';
 import {
-  urlResolver,
-  extractFileUri,
+    urlResolver,
+    extractFileUri,
 } from '../../../lib/url';
 import { PurgeCSS } from "purgecss";
 import purgecssWordpress from 'purgecss-with-wordpress'
 import stylelint from 'stylelint'
 import {
-  JSDOM,
-  VirtualConsole
+    JSDOM,
+    VirtualConsole
 } from 'jsdom'
 import reductionFactor from '../../../lib/reductionFactor'
 import type { NextApiRequest, NextApiResponse } from 'next'
@@ -38,11 +38,11 @@ const require = createRequire(import.meta.url)
 const CleanCSS = require('clean-css')
 
 if (mode === 'production') {
-  // haha y'all don't work now.
-  console.log = () => { }
-  console.warn = () => { }
-  console.error = () => { }
-  console.dir = () => { }
+    // haha y'all don't work now.
+    console.log = () => { }
+    console.warn = () => { }
+    console.error = () => { }
+    console.dir = () => { }
 }
 
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
