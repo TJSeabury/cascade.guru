@@ -1,6 +1,6 @@
 export const hasProtocol = (uri: string): boolean => /^https?:\/\//gm.test(uri);
 
-export const linkIsAbsolute = (uri: string): boolean => /^https?:\/\/(?:\w+?\.){1,9}\w+\/?|^(?:\w+?\.){1,9}\w+\/?/gm.test(uri);
+export const linkIsAbsolute = (uri: string): boolean => /^https?:\/\/(?:\w+?\.){1,9}\w+\/?|^(?:\w+?\.){1,9}\w+\/?|^https?:\/\/localhost\/?/gm.test(uri);
 
 export const linkIsRelative = (uri: string): boolean => !linkIsAbsolute(uri);
 
