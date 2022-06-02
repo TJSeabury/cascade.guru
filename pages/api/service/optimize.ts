@@ -37,6 +37,31 @@ const prisma = new PrismaClient()
 const require = createRequire(import.meta.url)
 
 const CleanCSS = require('clean-css')
+const cleanCSS = new CleanCSS({
+    format: {
+        breaks: { // controls where to insert breaks
+            afterAtRule: false, // controls if a line break comes after an at-rule; e.g. `@charset`; defaults to `false`
+            afterBlockBegins: false, // controls if a line break comes after a block begins; e.g. `@media`; defaults to `false`
+            afterBlockEnds: false, // controls if a line break comes after a block ends, defaults to `false`
+            afterComment: false, // controls if a line break comes after a comment; defaults to `false`
+            afterProperty: false, // controls if a line break comes after a property; defaults to `false`
+            afterRuleBegins: false, // controls if a line break comes after a rule begins; defaults to `false`
+            afterRuleEnds: false, // controls if a line break comes after a rule ends; defaults to `false`
+            beforeBlockEnds: false, // controls if a line break comes before a block ends; defaults to `false`
+            betweenSelectors: false // controls if a line break comes between selectors; defaults to `false`
+        },
+        breakWith: '\n', // controls the new line character, can be `'\r\n'` or `'\n'` (aliased as `'windows'` and `'unix'` or `'crlf'` and `'lf'`); defaults to system one, so former on Windows and latter on Unix
+        indentBy: 0, // controls number of characters to indent with; defaults to `0`
+        indentWith: 'space', // controls a character to indent with, can be `'space'` or `'tab'`; defaults to `'space'`
+        spaces: { // controls where to insert spaces
+            aroundSelectorRelation: false, // controls if spaces come around selector relations; e.g. `div > a`; defaults to `false`
+            beforeBlockBegins: false, // controls if a space comes before a block begins; e.g. `.block {`; defaults to `false`
+            beforeValue: false // controls if a space comes before a value; e.g. `width: 1rem`; defaults to `false`
+        },
+        wrapAt: false, // controls maximum line length; defaults to `false`
+        semicolonAfterLastProperty: false // controls removing trailing semicolons in rule; defaults to `false` - means remove
+    }
+});
 
 if (mode === 'production') {
     // haha y'all don't work now.
@@ -135,8 +160,8 @@ async function postHandler(req: NextApiRequest, res: NextApiResponse) {
         dom.serialize()
     );
 
-    console.log('Linting CSS'); // to prevent PurgeCSS from crashing.
-
+    // To prevent PurgeCSS from crashing...
+    console.log('Linting CSS');
     const errors: {
         file: string;
         errors: stylelint.Warning[];
@@ -160,6 +185,7 @@ async function postHandler(req: NextApiRequest, res: NextApiResponse) {
                         errors: d.warnings,
                         data: fs.readFileSync(path.resolve(d.source || '')).toString()
                     });
+                    // ... we must remove any offending file.
                     fs.rmSync(path.resolve(d.source || ''));
                     return;
                 }
@@ -174,7 +200,6 @@ async function postHandler(req: NextApiRequest, res: NextApiResponse) {
             // do things with err e.g.
             console.error(err.stack);
         });
-
 
     console.log('Purging CSS');
     const result = await new PurgeCSS().purge({
@@ -212,32 +237,6 @@ async function postHandler(req: NextApiRequest, res: NextApiResponse) {
             force: true
         }
     );
-
-    const cleanCSS = new CleanCSS({
-        format: {
-            breaks: { // controls where to insert breaks
-                afterAtRule: false, // controls if a line break comes after an at-rule; e.g. `@charset`; defaults to `false`
-                afterBlockBegins: false, // controls if a line break comes after a block begins; e.g. `@media`; defaults to `false`
-                afterBlockEnds: false, // controls if a line break comes after a block ends, defaults to `false`
-                afterComment: false, // controls if a line break comes after a comment; defaults to `false`
-                afterProperty: false, // controls if a line break comes after a property; defaults to `false`
-                afterRuleBegins: false, // controls if a line break comes after a rule begins; defaults to `false`
-                afterRuleEnds: false, // controls if a line break comes after a rule ends; defaults to `false`
-                beforeBlockEnds: false, // controls if a line break comes before a block ends; defaults to `false`
-                betweenSelectors: false // controls if a line break comes between selectors; defaults to `false`
-            },
-            breakWith: '\n', // controls the new line character, can be `'\r\n'` or `'\n'` (aliased as `'windows'` and `'unix'` or `'crlf'` and `'lf'`); defaults to system one, so former on Windows and latter on Unix
-            indentBy: 0, // controls number of characters to indent with; defaults to `0`
-            indentWith: 'space', // controls a character to indent with, can be `'space'` or `'tab'`; defaults to `'space'`
-            spaces: { // controls where to insert spaces
-                aroundSelectorRelation: false, // controls if spaces come around selector relations; e.g. `div > a`; defaults to `false`
-                beforeBlockBegins: false, // controls if a space comes before a block begins; e.g. `.block {`; defaults to `false`
-                beforeValue: false // controls if a space comes before a value; e.g. `width: 1rem`; defaults to `false`
-            },
-            wrapAt: false, // controls maximum line length; defaults to `false`
-            semicolonAfterLastProperty: false // controls removing trailing semicolons in rule; defaults to `false` - means remove
-        }
-    });
 
     const minified = cleanCSS.minify(css);
     const totalRF = 1 - (minified.stats.minifiedSize / rf.originalSize) || 0;
