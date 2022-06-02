@@ -91,16 +91,11 @@ async function postHandler(req: NextApiRequest, res: NextApiResponse) {
     if (!fs.existsSync(path.resolve(`./${tempDirName}/`))) {
         fs.mkdirSync(path.resolve(`./${tempDirName}/`));
     }
-    fs.writeFileSync(
-        path.resolve(`./${tempDirName}/temp.html`),
-        html
-    );
 
     const virtualConsole = new VirtualConsole();
     virtualConsole.on("error", () => {
         // No-op to skip console errors.
     });
-    // Get them stylesheet links.
     const dom = new JSDOM(html, { virtualConsole });
     if (!dom) {
         res.status(500).json('Failed to create vDOM. :c');
@@ -140,21 +135,16 @@ async function postHandler(req: NextApiRequest, res: NextApiResponse) {
             };
         }))
     );
-    for (const sheet of stylesheets) {
-        if (sheet.data === null) {
-            console.error(`Something went wrong! ${sheet.url
-                } is null.`);
-            continue;
-        }
-        let [fileUri, err] = extractFileUri(sheet.url);
-        if (err) {
-            fileUri = _.uniqueId(String(Date.now()));
-        }
-        fs.writeFileSync(
-            path.resolve(`./${tempDirName}/${fileUri}.css`),
-            sheet.data
-        );
     }
+
+    // Now, lets clean up and save the HTML.
+    for (let link of links) {
+        link.parentNode?.removeChild(link);
+    }
+    fs.writeFileSync(
+        path.resolve(`./${tempDirName}/temp.html`),
+        dom.serialize()
+    );
 
     console.log('Linting CSS'); // to prevent PurgeCSS from crashing.
 
