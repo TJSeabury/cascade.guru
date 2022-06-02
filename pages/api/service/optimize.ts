@@ -29,6 +29,7 @@ import reductionFactor from '../../../lib/reductionFactor'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { PrismaClient } from '@prisma/client'
 
+import { StyleSource } from '../../../lib/StyleSource'
 
 const prisma = new PrismaClient()
 
@@ -102,39 +103,27 @@ async function postHandler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     console.log('Finding stylesheets');
-
-    const links = <HTMLAnchorElement[]>Array.from(dom.window.document.querySelectorAll('link[rel="stylesheet"]'));
+    const links = <HTMLLinkElement[] | HTMLStyleElement[]>Array.from(dom.window.document.querySelectorAll('link[rel="stylesheet"], style'));
     if (!links) {
-        res.status(500).json('No <link>s found. :c');
+        res.status(500).json('No <link>s or <style>s found. :c');
     }
 
     console.log('Downloading CSS');
-    const stylesheets = await Promise.all(links.map((l: HTMLAnchorElement) => {
-        if (linkIsRelative(l.href)) {
-            console.log('Attempting to resolve relative url...', l.href);
-            let [temp, err] = urlResolver(l.href, targetHostname);
-            if (isUrl(temp) && err === null) {
-                l.href = temp;
-            } else {
-                console.error('Error: not a url!', l.href, temp);
-                return;
-            }
+    const resolverInit = (hostname: string) => (url: string) => urlResolver(url, hostname);
+    const resolver = resolverInit(targetHostname);
+    const stylesheets = links.map((l: HTMLLinkElement | HTMLStyleElement) => new StyleSource(l, resolver));
+
+    for (const sheet of stylesheets) {
+        const name = sheet.name();
+        const data = await sheet.data();
+        if (sheet === null || data === null) {
+            console.error(`Something went wrong! Stylesheet ${name} is null.`);
+            continue;
         }
-        return fetch(l.href);
-    })).then(responses =>
-        Promise.all(responses.map(async res => {
-            if (res?.status === 200) {
-                return {
-                    url: res.url,
-                    data: await res.text()
-                };
-            }
-            return {
-                url: res?.url,
-                data: null
-            };
-        }))
-    );
+        fs.writeFileSync(
+            path.resolve(`./${tempDirName}/${name}.css`),
+            data
+        );
     }
 
     // Now, lets clean up and save the HTML.
