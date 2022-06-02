@@ -68,12 +68,15 @@ export const urlResolver = (uri: string, hostname: string | null = null): [strin
   }
 };
 
-export const extractFileUri = (url: string | null): [string | null, Error | null] => {
-  if (!url) throw new Error('URL string must be provided!');
+export const extractFileUri = (url: string | null): [string, Error | null] => {
+  if (!url) return [
+    '',
+    new Error('URL string must be provided!')
+  ];
   const reg = /[\w\:\/\.-]+\/([\w\.-]+?)\.css/gm;
   const fileUri = reg.exec(url)?.[1];
   if (!fileUri) return [
-    null,
+    '',
     new Error('Failed to extract URI.')
   ];
   return [fileUri, null];
