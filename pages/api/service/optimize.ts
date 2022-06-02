@@ -148,7 +148,11 @@ async function postHandler(req: NextApiRequest, res: NextApiResponse) {
 
     console.log('Linting CSS'); // to prevent PurgeCSS from crashing.
 
-    const errors: { file: string; errors: stylelint.Warning[]; }[] = [];
+    const errors: {
+        file: string;
+        errors: stylelint.Warning[];
+        data: string
+    }[] = [];
 
     await stylelint
         .lint({
@@ -162,11 +166,12 @@ async function postHandler(req: NextApiRequest, res: NextApiResponse) {
         .then(function (data) {
             data.results.map(d => {
                 if (d.errored === true) {
-                    fs.rmSync(path.resolve(d.source || ''));
                     errors.push({
                         file: path.basename(d.source || ''),
-                        errors: d.warnings
+                        errors: d.warnings,
+                        data: fs.readFileSync(path.resolve(d.source || '')).toString()
                     });
+                    fs.rmSync(path.resolve(d.source || ''));
                     return;
                 }
                 fs.writeFileSync(
