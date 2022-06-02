@@ -2,53 +2,47 @@ import fs from 'fs';
 import path from 'path';
 import 'dotenv/config';
 const {
-    mode
+  mode
 } = process.env;
 // Bring in the ability to create the 'require' method
 import { createRequire } from "module";
-import { fileURLToPath } from 'url';
 import { URL } from 'url';
 import _ from 'lodash';
 import {
-    authenticate
+  authenticate
 } from '../../../lib/authorization';
 import {
-    getHtml,
+  getHtml,
 } from '../../../lib/crawling';
 import {
-    isUrl,
-    linkIsRelative,
-    urlResolver,
-    extractFileUri,
+  urlResolver,
+  extractFileUri,
 } from '../../../lib/url';
 import { PurgeCSS } from "purgecss";
-import purgecssWordpress from 'purgecss-with-wordpress';
-import stylelint from 'stylelint';
+import purgecssWordpress from 'purgecss-with-wordpress'
+import stylelint from 'stylelint'
 import {
-    JSDOM,
-    VirtualConsole
-} from 'jsdom';
-import fetch from 'node-fetch';
-import reductionFactor from '../../../lib/reductionFactor';
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { PrismaClient } from '@prisma/client';
+  JSDOM,
+  VirtualConsole
+} from 'jsdom'
+import reductionFactor from '../../../lib/reductionFactor'
+import type { NextApiRequest, NextApiResponse } from 'next'
+import { PrismaClient } from '@prisma/client'
+
 
 const prisma = new PrismaClient()
 
 // construct the require method
-const require = createRequire(import.meta.url);
-// Solves: "__dirname is not defined in ES module scope"
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const require = createRequire(import.meta.url)
 
-const CleanCSS = require('clean-css');
+const CleanCSS = require('clean-css')
 
 if (mode === 'production') {
-    // haha y'all don't work now.
-    console.log = () => { };
-    console.warn = () => { };
-    console.error = () => { };
-    console.dir = () => { };
+  // haha y'all don't work now.
+  console.log = () => { }
+  console.warn = () => { }
+  console.error = () => { }
+  console.dir = () => { }
 }
 
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
