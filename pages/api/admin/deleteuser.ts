@@ -19,10 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await deleteUser(payload)
         .catch((e) => { throw e; })
         .finally(async () => { await prisma.$disconnect(); });
-      res.status(204).json({
-        content:
-          "User deleted.",
-      })
+      res.status(204).end()
     } else {
       res.status(401).json({
         error: "You are not authorized to access this endpoint.",
