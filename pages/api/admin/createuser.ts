@@ -1,8 +1,8 @@
 import { prisma } from '../../../lib/db';
+import { User } from '@prisma/client';
 import { hashIt } from '../../../lib/authorization';
 import { getSession } from "next-auth/react"
 import type { NextApiRequest, NextApiResponse } from 'next';
-import type { User } from '../../../lib/types';
 
 async function createUser(u: User) {
     return prisma.user.create({
