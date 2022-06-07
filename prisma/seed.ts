@@ -1,8 +1,6 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/db';
 import { hashIt } from '../lib/authorization';
-import { User, userRoles } from '../lib/types';
-
-const prisma = new PrismaClient();
+import { User, planTypes, userRoles } from '../lib/types';
 
 async function createUser(u: User) {
   return prisma.user.create({
@@ -11,18 +9,27 @@ async function createUser(u: User) {
       surname: u.surname,
       email: u.email,
       userRole: u.userRole,
-      password: await hashIt(u.password)
+      password: await hashIt(u.password),
+      maxProperties: u.maxProperties || 1,
+      planType: u.planType || planTypes.single,
+      billable: u.billable || true,
+      discountPercent: u.discountPercent || 0.0
     }
   });
 }
 
 async function seed() {
-  const user = await createUser({
+  await createUser({
     forename: 'Balin',
     surname: 'Firebeard',
     email: 'admin@cascade.guru',
     userRole: userRoles.admin,
-    password: 'FullM3talViking'
+    password: 'FullM3talViking',
+    planType: planTypes.agency,
+    billable: false,
+    numberOfProperties: undefined,
+    maxProperties: undefined,
+    discountPercent: undefined
   })
     .catch((e) => { throw e; })
     .finally(async () => { await prisma.$disconnect(); });

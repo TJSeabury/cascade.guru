@@ -8,15 +8,20 @@ datasource db {
 }
 
 model User {
-  id         Int        @id @default(autoincrement())
-  email      String     @unique
-  password   String
-  verified   Boolean    @default(false)
-  forename   String?
-  surname    String?
-  userRole   String     @default("user")
-  profile    Profile?
-  properties Property[]
+  id                 Int        @id @default(autoincrement())
+  email              String     @unique
+  password           String
+  verified           Boolean    @default(false)
+  forename           String?
+  surname            String?
+  userRole           String     @default("user")
+  profile            Profile?
+  properties         Property[]
+  numberOfProperties Int        @default(0)
+  maxProperties      Int        @default(1)
+  planType           String     @default("single")
+  billable           Boolean    @default(true)
+  discountPercent    Float      @default(0.0)
 }
 
 model Profile {
