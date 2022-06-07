@@ -1,15 +1,17 @@
 import React, { FormEvent } from "react"
 import Select from "react-select"
 
-type MyProps = {}
-type MyState = {
+type Props = {
+  refresh: () => Promise<void>
+}
+type State = {
   forename: string | null
   surname: string | null
   email: string | null
   userRole: string | null
   password: string | null
 }
-export class CreateUserForm extends React.Component<MyProps, MyState> {
+export class CreateUserForm extends React.Component<Props, State> {
   constructor(props: any) {
     super(props)
     this.state = {
@@ -37,7 +39,8 @@ export class CreateUserForm extends React.Component<MyProps, MyState> {
       method: "POST",
       body: JSON.stringify(this.state),
     })
-    console.log(response)
+    this.props.refresh()
+    console.log(response.status)
   }
 
   render() {
@@ -54,7 +57,7 @@ export class CreateUserForm extends React.Component<MyProps, MyState> {
               { label: "Admin", value: "admin" },
               { label: "User", value: "user" },
             ]}
-            onChange={(v) => {
+            onChange={(v: any) => {
               this.setState({
                 ...this.state,
                 userRole: v?.value || null,
