@@ -4,6 +4,7 @@
   "private": true,
   "description": "SaaS that crawls a live site, gathers the target page's css, and returns an optimized bundle.",
   "main": "index.tsx",
+  "type": "commonjs",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -15,7 +16,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "prisma": {
-    "seed": "node --loader ts-node/esm ./prisma/seed.ts"
+    "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
   },
   "keywords": [
     "css",
@@ -60,8 +61,8 @@
     "@types/react-dom": "^18.0.5",
     "eslint": "8.14.0",
     "eslint-config-next": "12.1.6",
-    "ts-node": "^10.7.0",
-    "typescript": "^4.6.4"
+    "ts-node": "^10.8.1",
+    "typescript": "^4.7.3"
   },
   "prettier": {
     "semi": false
