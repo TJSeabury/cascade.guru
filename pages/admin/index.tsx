@@ -1,10 +1,7 @@
 import { prisma } from "../../lib/db"
 import Layout from "../../components/layout"
 import type { User } from "@prisma/client"
-import { CreateUserForm } from "../../components/forms/CreateUser"
-import UserList from "../../components/UserList"
-
-
+import UsersView from "../../components/admin/UsersView"
 
 export default function Page({ userList }: { userList: User[] }) {
   return (
@@ -18,19 +15,7 @@ export default function Page({ userList }: { userList: User[] }) {
         </a>
         .
       </p>
-      <section>
-        <header>
-          <h2>Current Users</h2>
-        </header>
-        <UserList userList={userList} />
-      </section>
-      <hr />
-      <section>
-        <header>
-          <h2>Create new user</h2>
-        </header>
-        <CreateUserForm />
-      </section>
+      <UsersView userList={userList} />
     </Layout>
   )
 }
