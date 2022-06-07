@@ -27,7 +27,7 @@ body {
 .appMain {
   grid-area: main;
   padding: 2rem;
-  background-color: hsl(182, 100%, 16%);
+  background-color: hsl(222, 62%, 8%);
   color: white;
 }
 .appFooter {
