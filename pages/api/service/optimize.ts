@@ -27,11 +27,9 @@ import {
 } from 'jsdom'
 import reductionFactor from '../../../lib/reductionFactor'
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '../../../lib/db';
 
 import { StyleSource } from '../../../lib/StyleSource'
-
-const prisma = new PrismaClient()
 
 // construct the require method
 const require = createRequire(import.meta.url)

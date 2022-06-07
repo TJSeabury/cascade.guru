@@ -1,10 +1,8 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from "../../../lib/db";
 import { getSession } from "next-auth/react"
 import type { NextApiRequest, NextApiResponse } from 'next';
 import type { User, Property } from '@prisma/client';
 import { randomUUID } from 'crypto';
-
-const prisma = new PrismaClient();
 
 async function createProperty(p: Property, u: User) {
     return prisma.property.create({

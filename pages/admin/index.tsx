@@ -1,10 +1,10 @@
+import { prisma } from "../../lib/db"
 import Layout from "../../components/layout"
-import { PrismaClient } from "@prisma/client"
 import type { User } from "@prisma/client"
 import { CreateUserForm } from "../../components/forms/CreateUser"
 import UserList from "../../components/UserList"
 
-const prisma = new PrismaClient()
+
 
 export default function Page({ userList }: { userList: User[] }) {
   return (
