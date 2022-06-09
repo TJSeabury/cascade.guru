@@ -1,66 +1,66 @@
 import {
-    JSDOM,
-    VirtualConsole
+  JSDOM,
+  VirtualConsole
 } from 'jsdom';
 import fetch from 'node-fetch';
 
 export const getHead = async (target: string | null = null) => {
-    if (target === null) throw new Error('Target must be provided...');
-    const response = await fetch(
-        target,
-        {
-            method: 'HEAD'
-        }
-    );
-    if (response.status === 200) {
-        return response;
+  if (target === null) throw new Error('Target must be provided...');
+  const response = await fetch(
+    target,
+    {
+      method: 'HEAD'
     }
-    return null;
+  );
+  if (response.status === 200) {
+    return response;
+  }
+  return null;
 };
 
 export const linkExists = async (target: string | null = null) => {
-    if (await getHead(target) === null) return false;
-    return true;
+  if (await getHead(target) === null) return false;
+  return true;
 };
 
 export const getHtml = async (target: string | null = null): Promise<[string | null, any | null]> => {
-    if (target === null) throw new Error('Target must be provided...');
-    const response = await fetch(target);
-    if (response.status === 200) {
-        const html = await response.text();
-        return [html, null];
-    }
-    return [null, response];
+  if (target === null) throw new Error('Target must be provided...');
+  const response = await fetch(target);
+  if (response.status === 200) {
+    const html = await response.text();
+    return [html, null];
+  }
+  return [null, response];
 };
 
 export const parseDom = (html: string | null): [JSDOM | null, Error | null] => {
-    if (!html) return [null, new Error('HTML must be provided...')];
+  if (!html) return [null, new Error('HTML must be provided...')];
 
-    // See: https://github.com/jsdom/jsdom/issues/2230
-    const virtualConsole = new VirtualConsole();
-    virtualConsole.on("error", () => {/* No-op to skip console errors. */ });
+  // See: https://github.com/jsdom/jsdom/issues/2230
+  const virtualConsole = new VirtualConsole();
+  virtualConsole.on("error", () => {/* No-op to skip console errors. */ });
 
-    const dom = new JSDOM(html, { virtualConsole });
-    if (!dom) return [null, new Error('Could not parse html string.')];
+  const dom = new JSDOM(html, { virtualConsole });
+  if (!dom) return [null, new Error('Could not parse html string.')];
 
-    return [dom, null];
+  return [dom, null];
 };
 
 export const getAnchors = (dom: JSDOM | null): [HTMLAnchorElement[] | null, Error | null] => {
-    if (!dom) return [null, new Error('Valid JSDOM object required.')];
-    const anchors = Array.from(dom.window.document.querySelectorAll('a[href]'));
-    if (!anchors) return [null, new Error('No anchor elements found.')];
-    return [<HTMLAnchorElement[]>anchors, null];
+  if (!dom) return [null, new Error('Valid JSDOM object required.')];
+  const anchors = Array.from(dom.window.document.querySelectorAll('a[href]'));
+  if (!anchors) return [null, new Error('No anchor elements found.')];
+  return [<HTMLAnchorElement[]>anchors, null];
 };
 
 export const getLinks = async (target: string): Promise<[string[] | null, Error | null]> => {
-    if (!target) return [null, new Error('Target must be provided...')];
-    if (await linkExists(target) === false) return [null, new Error('No links found.')];
-    const [html, err1] = await getHtml(target);
-    const [dom, err2] = parseDom(html);
-    const [anchors, err3] = getAnchors(dom);
-    if (!anchors) return [null, new Error('No anchors found.')];
-    return [anchors.map((a: HTMLAnchorElement) => a.href), null];
+  if (!target) return [null, new Error('Target must be provided...')];
+  if (await linkExists(target) === false) return [null, new Error('No links found.')];
+  const [html, err1] = await getHtml(target);
+  const [dom, err2] = parseDom(html);
+  const [anchors, err3] = getAnchors(dom);
+  if (!anchors) return [null, new Error('No anchors found.')];
+  return [anchors.map((a: HTMLAnchorElement) => a.href), null];
 };
 
 /* export const getAllLinks = async (target = null, crawledLinks = [], domain) => {
