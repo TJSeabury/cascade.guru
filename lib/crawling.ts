@@ -3,7 +3,7 @@ import {
   VirtualConsole
 } from 'jsdom';
 import fetch from 'node-fetch';
-import * as puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer'
 
 export const getHead = async (target: string | null = null) => {
   if (target === null) throw new Error('Target must be provided...');
