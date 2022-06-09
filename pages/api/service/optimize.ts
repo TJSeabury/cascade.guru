@@ -109,7 +109,9 @@ async function postHandler(req: NextApiRequest, res: NextApiResponse) {
 
   const [html, error] = await getHtml(target);
   if (!html || error !== null) {
-    res.status(422).json(`${target} responded with status ${error.status}`);
+    console.log('!html || error !== null');
+    console.log(error);
+    res.status(422).json(`${target} responded with status ${error}`);
     return;
   }
   if (!fs.existsSync(path.resolve(`./${tempDirName}/`))) {
@@ -228,13 +230,13 @@ async function postHandler(req: NextApiRequest, res: NextApiResponse) {
 
   // cleanup!
   console.log('Cleaning up temp dir');
-  fs.rmSync(
+  /* fs.rmSync(
     `./${tempDirName}/`,
     {
       recursive: true,
       force: true
     }
-  );
+  ); */
 
   const minified = cleanCSS.minify(css);
   const totalRF = 1 - (minified.stats.minifiedSize / rf.originalSize) || 0;

@@ -3,6 +3,7 @@ import {
   VirtualConsole
 } from 'jsdom';
 import fetch from 'node-fetch';
+import * as puppeteer from 'puppeteer';
 
 export const getHead = async (target: string | null = null) => {
   if (target === null) throw new Error('Target must be provided...');
@@ -23,7 +24,8 @@ export const linkExists = async (target: string | null = null) => {
   return true;
 };
 
-export const getHtml = async (target: string | null = null): Promise<[string | null, any | null]> => {
+// old version
+/* export const getHtml = async (target: string | null = null): Promise<[string | null, any | null]> => {
   if (target === null) throw new Error('Target must be provided...');
   const response = await fetch(target);
   if (response.status === 200) {
@@ -31,6 +33,23 @@ export const getHtml = async (target: string | null = null): Promise<[string | n
     return [html, null];
   }
   return [null, response];
+}; */
+
+
+export const getHtml = async (target: string | null = null): Promise<[string | null, any | null]> => {
+  try {
+    if (target === null) throw new Error('Target must be provided...');
+    const browser = await puppeteer.launch({
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+    const page = await browser.newPage();
+    await page.goto(target, { waitUntil: 'networkidle0' });
+    const html = await page.content();
+    await browser.close();
+    return [html, null];
+  } catch (error) {
+    return [null, error];
+  }
 };
 
 export const parseDom = (html: string | null): [JSDOM | null, Error | null] => {
