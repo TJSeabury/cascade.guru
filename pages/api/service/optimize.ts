@@ -149,6 +149,7 @@ async function postHandler(req: NextApiRequest, res: NextApiResponse) {
       path.resolve(`./${tempDirName}/${name}.css`),
       data
     );
+    console.log(`./${tempDirName}/${name}.css`);
   }
 
   // Now, lets clean up and save the HTML.
