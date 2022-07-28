@@ -6,9 +6,9 @@
   "main": "index.tsx",
   "type": "commonjs",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3030",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p 3030",
     "types": "tsc --noEmit",
     "lint": "next lint",
     "run": "node .",
