@@ -205,7 +205,12 @@ async function postHandler(req: NextApiRequest, res: NextApiResponse) {
   const result = await new PurgeCSS().purge({
     content: [`./${tempDirName}/**/*.html`],
     css: [`./${tempDirName}/**/*.css`],
-    safelist: purgecssWordpress.safelist
+    safelist: [
+      ...purgecssWordpress.safelist,
+      'tooltip', 'fade', 'bottom', 'in',
+      'fusion-is-sticky',
+      'fusion-sticky-shadow'
+    ]
   });
   if (!result) {
     res.status(500).json('Failed to purge. :c');
@@ -230,20 +235,20 @@ async function postHandler(req: NextApiRequest, res: NextApiResponse) {
 
   // cleanup!
   console.log('Cleaning up temp dir');
-  /* fs.rmSync(
+  fs.rmSync(
     `./${tempDirName}/`,
     {
       recursive: true,
       force: true
     }
-  ); */
+  );
 
   const minified = cleanCSS.minify(css);
   const totalRF = 1 - (minified.stats.minifiedSize / rf.originalSize) || 0;
 
   const processingTime = Date.now() - startTime;
 
-  console.log('Serving result');
+  console.log('Done! Serving bundle.');
   res.json({
     stats: {
       processingTime: processingTime,
