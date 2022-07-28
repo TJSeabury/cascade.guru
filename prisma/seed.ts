@@ -24,7 +24,7 @@ async function seed() {
     surname: 'Firebeard',
     email: 'admin@cascade.guru',
     userRole: userRoles.admin,
-    password: 'admin',
+    password: '7QoK9$rk^0VxQXxeQ7tHUuc0o32NYM5GrVFL6JOKCGVrcGzUNKDLWKHcw*8N$sUH',
     planType: planTypes.agency,
     billable: false,
     numberOfProperties: undefined,

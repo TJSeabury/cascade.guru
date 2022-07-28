@@ -16,11 +16,6 @@ export default function Nav() {
           </Link>
         </li>
         <li className={styles.navItem}>
-          <Link href="/api-example">
-            <a>Documentation</a>
-          </Link>
-        </li>
-        <li className={styles.navItem}>
           <Link href="/admin">
             <a>Users</a>
           </Link>
